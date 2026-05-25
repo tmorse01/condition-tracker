@@ -25,5 +25,5 @@ export const demoSeed = {
 };
 
 console.log(
-  `Seed prepared: ${demoSeed.loans.length} loans, ${demoSeed.conditions.length} conditions, ${demoSeed.documentVersions.length} versions.`,
+  `Seed prepared: ${demoSeed.loans.length} loans, ${demoSeed.conditions.length} conditions, ${demoSeed.documentVersions.length} versions, ${demoSeed.uploadSessions.length} upload sessions, ${demoSeed.auditLog.length} audit entries, ${demoSeed.notifications.length} notifications.`,
 );
