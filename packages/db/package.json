@@ -1,0 +1,11 @@
+{
+  "name": "@condition-tracker/db",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "migrate": "node ./src/migrate.js",
+    "seed": "node ./src/seed.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

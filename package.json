@@ -1,0 +1,14 @@
+{
+  "name": "condition-tracker",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @condition-tracker/api --filter @condition-tracker/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "db:migrate": "pnpm --filter @condition-tracker/db migrate",
+    "db:seed": "pnpm --filter @condition-tracker/db seed"
+  }
+}

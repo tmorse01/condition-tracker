@@ -1,0 +1,12 @@
+{
+  "name": "@condition-tracker/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node ./src/server.js",
+    "build": "echo \"web build pending\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo \"web lint pending\""
+  }
+}
