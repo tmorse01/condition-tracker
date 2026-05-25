@@ -43,3 +43,55 @@ export const resolveTemporaryDownload = (token: string) => {
   return entry.storageKey;
 };
 
+const escapePdfText = (value: string) => value.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)");
+
+const createDemoPdf = (title: string, fileName: string) => {
+  const content = [
+    "BT",
+    "/F1 22 Tf",
+    "72 716 Td",
+    `(${escapePdfText(title)}) Tj`,
+    "0 -34 Td",
+    "/F1 12 Tf",
+    `(ConditionFlow document preview) Tj`,
+    "0 -24 Td",
+    `(${escapePdfText(fileName)}) Tj`,
+    "0 -36 Td",
+    "(Prepared for internal review) Tj",
+    "ET",
+  ].join("\n");
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ];
+  let result = "%PDF-1.4\n";
+  const offsets: number[] = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(result, "ascii"));
+    result += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = Buffer.byteLength(result, "ascii");
+  result += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.slice(1).forEach((offset) => {
+    result += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  });
+  result += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return new TextEncoder().encode(result);
+};
+
+export const seedDemoDocumentStorage = async (
+  versions: Array<{ storageKey: string; contentType: string; fileName: string; documentId: string }>,
+) => {
+  for (const version of versions) {
+    if (storage.has(version.storageKey) || version.contentType !== "application/pdf") continue;
+    await storageService.uploadFile({
+      storageKey: version.storageKey,
+      bytes: createDemoPdf(`Document ${version.documentId}`, version.fileName),
+      contentType: version.contentType,
+      fileName: version.fileName,
+    });
+  }
+};
