@@ -3,10 +3,27 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "./src/main.tsx",
+  "dependencies": {
+    "@condition-tracker/shared": "workspace:*",
+    "@mantine/core": "^8.2.0",
+    "@mantine/hooks": "^8.2.0",
+    "@mantine/notifications": "^8.2.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "tsx": "^4.19.4",
+    "eslint": "^9.27.0"
+  },
   "scripts": {
-    "dev": "node ./src/server.js",
-    "build": "echo \"web build pending\"",
+    "dev": "vite",
+    "build": "vite build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "echo \"web lint pending\""
+    "lint": "eslint ./src --ext .ts,.tsx"
   }
 }

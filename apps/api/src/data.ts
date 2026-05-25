@@ -7,9 +7,8 @@ import {
   demoUploadSessions,
   demoVersions,
 } from "@condition-tracker/shared/demo-data";
-import type { DatabaseSchema } from "./schema.js";
 
-export const demoDatabase: DatabaseSchema = {
+export const db = {
   loans: demoLoans,
   conditions: demoConditions,
   documents: demoDocuments,
@@ -18,5 +17,3 @@ export const demoDatabase: DatabaseSchema = {
   auditLog: demoAuditLog,
   notifications: demoNotifications,
 };
-
-console.log(`Seeded ${demoDatabase.loans.length} loans, ${demoDatabase.conditions.length} conditions.`);

@@ -1,14 +1,24 @@
-import type { Condition, Loan, DocumentVersion } from "@condition-tracker/shared";
+import type {
+  AuditLogEntry,
+  Condition,
+  Document,
+  DocumentVersion,
+  Loan,
+  Notification,
+  UploadSession,
+} from "@condition-tracker/shared";
 
-export type { Condition, Loan, DocumentVersion };
+export type { AuditLogEntry, Condition, Document, DocumentVersion, Loan, Notification, UploadSession };
 
-export interface UploadSession {
-  id: string;
-  loanId: string;
-  tokenHash: string;
-  status: "Active" | "Expired" | "Revoked" | "Used";
-  expiresAt: string;
-  createdAt: string;
-  usedAt: string | null;
-  revokedAt: string | null;
+export interface DatabaseSchema {
+  loans: Loan[];
+  conditions: Condition[];
+  documents: Document[];
+  documentVersions: DocumentVersion[];
+  uploadSessions: UploadSession[];
+  auditLog: AuditLogEntry[];
+  notifications: Notification[];
 }
+
+export const storageKeyForVersion = (loanId: string, documentId: string, versionId: string, fileName: string) =>
+  `loans/${loanId}/documents/${documentId}/versions/${versionId}/${fileName}`;
