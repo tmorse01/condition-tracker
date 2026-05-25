@@ -1,102 +1,101 @@
-import { Alert, Badge, Button, Card, Container, Group, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Button, Card, Group, Loader, Select, Stack, Text, Title } from "@mantine/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import { PdfDropzone } from "../components/PdfDropzone";
 import { StatusBadge } from "../components/StatusBadge";
-import { useUploadSessionValidationQuery } from "../hooks/queries";
 import { queryKeys } from "../hooks/queryKeys";
+import { useUploadSessionValidationQuery } from "../hooks/queries";
 import { uploadSessionDocument } from "../services/api/upload-sessions";
-import { demoConditions } from "@condition-tracker/shared/demo-data";
 
 export function UploadSessionPage() {
   const { sessionId = "" } = useParams();
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
   const queryClient = useQueryClient();
-  const { data } = useUploadSessionValidationQuery(sessionId, token);
-  const [conditionId, setConditionId] = useState("cond_1");
-  const [title, setTitle] = useState("Insurance Certificate");
-  const [fileName, setFileName] = useState("insurance.pdf");
+  const { data, isLoading } = useUploadSessionValidationQuery(sessionId, token);
+  const [conditionId, setConditionId] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
+  const [complete, setComplete] = useState(false);
 
-  const mutation = useMutation({
-    mutationFn: () => uploadSessionDocument(sessionId, { token, conditionId, title, fileName, contentType: "application/pdf" }),
+  useEffect(() => {
+    if (!conditionId && data?.eligibleConditions[0]) setConditionId(data.eligibleConditions[0].id);
+  }, [conditionId, data]);
+
+  const selectedCondition = data?.eligibleConditions.find((condition) => condition.id === conditionId);
+  const upload = useMutation({
+    mutationFn: () => {
+      if (!file || !selectedCondition) throw new Error("Select a requirement and PDF before uploading.");
+      return uploadSessionDocument(sessionId, { token, conditionId: selectedCondition.id, title: selectedCondition.title, file });
+    },
     onSuccess: async () => {
+      setComplete(true);
+      setMessage("");
       await queryClient.invalidateQueries({ queryKey: queryKeys.uploadSessionValidation(sessionId, token) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.loans });
-      if (data?.session?.loanId) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.loan(data.session.loanId) });
-      }
+      if (data?.session?.loanId) await queryClient.invalidateQueries({ queryKey: queryKeys.loan(data.session.loanId) });
     },
+    onError: (error) => setMessage(error instanceof Error ? error.message : "Upload failed. Please try again."),
   });
 
-  const state = mutation.isPending
-    ? "Uploading"
-    : data?.valid
-      ? "Ready"
-      : data?.reason === "Upload Complete"
-        ? "Complete"
-        : data?.reason ?? "Validating";
-  const isReady = data?.valid ?? false;
+  const state = isLoading ? "Validating" : complete || data?.reason === "Upload Complete" ? "Complete" : upload.isPending ? "Uploading" : data?.valid ? "Ready" : data?.reason ?? "Invalid Link";
 
-  const validConditions = useMemo(
-    () => demoConditions.filter((condition) => condition.loanId === (data?.session?.loanId ?? "loan_1")),
-    [data],
-  );
+  if (isLoading) {
+    return <Stack align="center" py={80}><Loader color="indigo" /><Text>Checking your secure upload link...</Text></Stack>;
+  }
 
   return (
-    <Container size="sm" py="xl">
-      <Stack gap="md">
-        <Card withBorder radius="xl" p="lg">
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "38px 24px 56px" }}>
+      <Card withBorder radius="lg" p={{ base: "lg", sm: "xl" }}>
+        <Stack gap="lg">
           <Group justify="space-between" align="start">
             <div>
-              <Badge variant="light" color="lime" mb="xs">
-                Secure borrower link
-              </Badge>
-              <Title order={2}>Borrower Upload</Title>
+              <Text size="sm" fw={700} c="indigo.7">DOCUMENT REQUEST</Text>
+              <Title order={1} mt={6}>Upload requested document</Title>
               <Text c="dimmed" mt="xs">
-                Secure upload link validation and document submission flow.
+                {data?.loan ? `${data.loan.borrowerName} - Loan ${data.loan.loanNumber}` : "Secure borrower upload"}
               </Text>
             </div>
-            <Button component={Link} to="/loans" variant="default">
-              Loans
-            </Button>
+            <StatusBadge status={state} />
           </Group>
-          <StatusBadge status={state} />
-          {data?.session ? <Text size="sm" mt="sm" c="dimmed">Loan {data.session.loanId}</Text> : null}
-          {!isReady && data?.reason ? (
-            <Alert mt="md" color="red" variant="light" title="Upload unavailable">
-              {data.reason}
+
+          {state === "Complete" ? (
+            <Alert color="green" variant="light" title="Upload complete">
+              Your PDF has been delivered securely for review. No additional action is needed for this link.
             </Alert>
           ) : null}
-          <Stack mt="md">
-            <TextInput label="Condition ID" value={conditionId} onChange={(event) => setConditionId(event.currentTarget.value)} disabled={!isReady} />
-            <TextInput label="Document Title" value={title} onChange={(event) => setTitle(event.currentTarget.value)} disabled={!isReady} />
-            <TextInput label="File name" value={fileName} onChange={(event) => setFileName(event.currentTarget.value)} disabled={!isReady} />
-            {validConditions.length ? (
-              <Text size="sm" c="dimmed">
-                Available conditions: {validConditions.map((condition) => condition.id).join(", ")}
-              </Text>
-            ) : null}
-            <Button
-              onClick={async () => {
-                setMessage("");
-                try {
-                  const result = await mutation.mutateAsync();
-                  setMessage(`Uploaded ${result.fileName} as version ${result.versionId}`);
-                } catch (error) {
-                  setMessage(error instanceof Error ? error.message : "Upload failed");
-                }
-              }}
-              loading={mutation.isPending}
-              disabled={!isReady || state === "Complete"}
-            >
-              Upload
-            </Button>
-            {message ? <Text size="sm">{message}</Text> : null}
-          </Stack>
-        </Card>
-      </Stack>
-    </Container>
+          {!data?.valid && state !== "Complete" ? (
+            <Alert color="red" variant="light" title="This upload link is unavailable">
+              {data?.reason === "Expired Link" ? "This secure link has expired. Please request a new link from your loan contact." : "This link is invalid or no longer available."}
+            </Alert>
+          ) : null}
+
+          {data?.valid && !complete ? (
+            <>
+              <Select
+                label="Document requirement"
+                description="Choose the outstanding item covered by your PDF."
+                value={conditionId}
+                onChange={setConditionId}
+                data={data.eligibleConditions.map((condition) => ({ value: condition.id, label: condition.title }))}
+                disabled={upload.isPending}
+                placeholder="Select a requirement"
+              />
+              {selectedCondition ? <Text size="sm" c="dimmed">{selectedCondition.description}</Text> : null}
+              <PdfDropzone file={file} onChange={setFile} onError={setMessage} disabled={upload.isPending} />
+              {message ? <Alert color="red" variant="light">{message}</Alert> : null}
+              <Button size="md" onClick={() => upload.mutate()} loading={upload.isPending} disabled={!file || !selectedCondition}>
+                Submit PDF securely
+              </Button>
+            </>
+          ) : null}
+
+          <Text size="xs" c="dimmed">
+            Files are transmitted securely and attached to your loan condition history. PDF only, maximum file size 10 MB.
+          </Text>
+        </Stack>
+      </Card>
+    </div>
   );
 }

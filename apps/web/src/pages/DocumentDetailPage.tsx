@@ -1,117 +1,118 @@
-import { Badge, Button, Card, Container, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { Button, Card, Grid, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { PdfPreview, PdfThumbnail } from "../components/PdfPreview";
 import { StatusBadge } from "../components/StatusBadge";
 import { useDocumentQuery } from "../hooks/queries";
+import { downloadDocumentVersion } from "../services/api/loans";
 
 export function DocumentDetailPage() {
   const { documentId = "" } = useParams();
   const documentQuery = useDocumentQuery(documentId);
+  const [versionId, setVersionId] = useState<string | null>(null);
+  const [downloadMessage, setDownloadMessage] = useState("");
 
-  if (documentQuery.isLoading) return <Container size="lg" py="xl"><Loader /></Container>;
-  if (!documentQuery.data) return <Container size="lg" py="xl">Document not found.</Container>;
+  useEffect(() => {
+    if (!documentQuery.data) return;
+    const current = documentQuery.data.versions.find((version) => version.id === documentQuery.data?.document.currentVersionId)
+      ?? documentQuery.data.versions[0];
+    setVersionId((selected) => selected ?? current?.id ?? null);
+  }, [documentQuery.data]);
+
+  if (documentQuery.isLoading) return <div className="page-surface"><Loader /></div>;
+  if (!documentQuery.data) return <div className="page-surface">Document not found.</div>;
 
   const { document, versions, auditLog, associatedConditions, loan } = documentQuery.data;
-  const currentVersion = versions.find((version) => version.id === document.currentVersionId) ?? versions[0] ?? null;
+  const selectedVersion = versions.find((version) => version.id === versionId) ?? versions[0] ?? null;
+
+  const download = async () => {
+    if (!selectedVersion) return;
+    try {
+      const result = await downloadDocumentVersion(selectedVersion.id);
+      window.open(result.downloadUrl, "_blank", "noopener,noreferrer");
+      setDownloadMessage("");
+    } catch (error) {
+      setDownloadMessage(error instanceof Error ? error.message : "Download unavailable.");
+    }
+  };
 
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="md">
+    <div className="page-surface">
+      <Stack gap="lg">
         <Group justify="space-between" align="end">
           <div>
-            <Badge variant="light" color="lime" mb="xs">
-              Document detail
-            </Badge>
-            <Title order={2}>{document.title}</Title>
-            <Text c="dimmed">Document detail and version history.</Text>
+            {loan ? <Button component={Link} to={`/loans/${loan.id}`} variant="subtle" px={0} mb="sm">Back to {loan.loanNumber}</Button> : null}
+            <Title order={1}>{document.title}</Title>
+            <Text c="dimmed">Versioned document record and review history</Text>
           </div>
           <Group>
-            {loan ? <Button component={Link} to={`/loans/${loan.id}`} variant="default">Back to loan</Button> : null}
-            <Button component={Link} to="/loans" variant="subtle">Loans</Button>
+            {selectedVersion ? <StatusBadge status={selectedVersion.reviewStatus} /> : null}
+            <Button variant="light" disabled={!selectedVersion} onClick={download}>Download PDF</Button>
           </Group>
         </Group>
-
-        <Card withBorder radius="lg" p="lg">
-          <Group justify="space-between" align="start">
-            <div>
-              <Title order={4}>Current version</Title>
-              <Text size="sm" c="dimmed">
-                {currentVersion?.fileName ?? "No versions yet"}
-              </Text>
-            </div>
-            {currentVersion ? <StatusBadge status={currentVersion.reviewStatus} /> : null}
-          </Group>
-          {currentVersion ? (
-            <Stack mt="md" gap="xs">
-              <Text size="sm">Version {currentVersion.versionNumber}</Text>
-              <Text size="sm">Uploaded by {currentVersion.uploadedBy}</Text>
-              <Text size="sm">Uploaded at {currentVersion.uploadedAt}</Text>
-              <Text size="sm">Review notes: {currentVersion.reviewNotes ?? "None"}</Text>
+        {downloadMessage ? <Text c="red" size="sm">{downloadMessage}</Text> : null}
+        <Grid gutter="lg">
+          <Grid.Col span={{ base: 12, lg: 8 }}>
+            {selectedVersion ? <PdfPreview versionId={selectedVersion.id} title={document.title} /> : (
+              <Card withBorder p="xl"><Text c="dimmed">No document version is available.</Text></Card>
+            )}
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, lg: 4 }}>
+            <Stack gap="md">
+              <Card withBorder radius="lg" p="lg">
+                <Title order={4}>Version history</Title>
+                <Stack mt="md">
+                  {versions.map((version) => (
+                    <Card
+                      key={version.id}
+                      withBorder
+                      radius="md"
+                      p="xs"
+                      onClick={() => setVersionId(version.id)}
+                      style={{ cursor: "pointer", borderColor: version.id === selectedVersion?.id ? "#4f46e5" : undefined }}
+                    >
+                      <PdfThumbnail versionId={version.id} label={`Version ${version.versionNumber}`} />
+                      <Group justify="space-between" mt="xs">
+                        <Text size="sm" fw={600}>v{version.versionNumber}</Text>
+                        <StatusBadge status={version.reviewStatus} />
+                      </Group>
+                      <Text size="xs" c="dimmed" mt={6}>{version.fileName}</Text>
+                    </Card>
+                  ))}
+                </Stack>
+              </Card>
+              <Card withBorder radius="lg" p="lg">
+                <Title order={4}>Linked conditions</Title>
+                <Stack mt="md">
+                  {associatedConditions.map((condition) => (
+                    <div key={condition.id}>
+                      <Text size="sm" fw={600}>{condition.title}</Text>
+                      <Group justify="space-between" mt={4}>
+                        <StatusBadge status={condition.status} />
+                        <Button component={Link} to={`/conditions/${condition.id}`} variant="subtle" size="xs">Open</Button>
+                      </Group>
+                    </div>
+                  ))}
+                </Stack>
+              </Card>
             </Stack>
-          ) : null}
-        </Card>
-
+          </Grid.Col>
+        </Grid>
         <Card withBorder radius="lg" p="lg">
-          <Title order={4}>Version history</Title>
-          <Stack mt="md" gap="sm">
-            {versions.map((version) => (
-              <Card key={version.id} withBorder radius="md" p="md">
-                <Group justify="space-between" align="start">
-                  <div>
-                    <Text fw={600}>Version {version.versionNumber}</Text>
-                    <Text size="sm">Uploaded by {version.uploadedBy}</Text>
-                    <Text size="sm">Uploaded at {version.uploadedAt}</Text>
-                    <Text size="sm">Review notes: {version.reviewNotes ?? "None"}</Text>
-                  </div>
-                  <StatusBadge status={version.reviewStatus} />
-                </Group>
-              </Card>
-            ))}
-          </Stack>
-        </Card>
-
-        <Card withBorder radius="lg" p="lg">
-          <Title order={4}>Review history</Title>
-          <Stack mt="md" gap="xs">
+          <Title order={4} mb="md">Audit history</Title>
+          <Stack>
             {auditLog.map((entry) => (
-              <Card key={entry.id} withBorder radius="md" p="sm">
-                <Text size="xs" c="dimmed">
-                  {entry.action}
-                </Text>
-                <Text size="sm">{entry.message}</Text>
-              </Card>
-            ))}
-          </Stack>
-        </Card>
-
-        <Card withBorder radius="lg" p="lg">
-          <Title order={4}>Associated conditions</Title>
-          <Stack mt="md" gap="sm">
-            {associatedConditions.map((condition) => (
-              <Group key={condition.id} justify="space-between">
+              <Group key={entry.id} justify="space-between">
                 <div>
-                  <Text fw={600}>{condition.title}</Text>
-                  <Text size="sm" c="dimmed">
-                    {condition.description}
-                  </Text>
+                  <Text size="sm" fw={600}>{entry.message}</Text>
+                  <Text size="xs" c="dimmed">{entry.actorName} - {entry.action}</Text>
                 </div>
-                <Group>
-                  <Text size="sm" c="dimmed">
-                    {condition.loanId === loan?.id ? "Current loan" : `Loan ${condition.loanId}`}
-                  </Text>
-                  <Button component={Link} to={`/conditions/${condition.id}`} variant="subtle">
-                    Open review
-                  </Button>
-                </Group>
+                <Text size="xs" c="dimmed">{new Date(entry.createdAt).toLocaleString()}</Text>
               </Group>
             ))}
-            {!associatedConditions.length ? (
-              <Text size="sm" c="dimmed">
-                No associated conditions found.
-              </Text>
-            ) : null}
           </Stack>
         </Card>
       </Stack>
-    </Container>
+    </div>
   );
 }

@@ -53,33 +53,37 @@ const createDemoPdf = (title: string, fileName: string) => {
     `(${escapePdfText(title)}) Tj`,
     "0 -34 Td",
     "/F1 12 Tf",
-    `(ConditionFlow document preview) Tj`,
+    "(ConditionFlow document preview) Tj",
     "0 -24 Td",
     `(${escapePdfText(fileName)}) Tj`,
     "0 -36 Td",
     "(Prepared for internal review) Tj",
     "ET",
   ].join("\n");
-  const objects = [
+
+  const objectBodies = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
     "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
-    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+    `<< /Length ${Buffer.byteLength(content, "ascii")} >>\nstream\n${content}\nendstream`,
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
   ];
-  let result = "%PDF-1.4\n";
-  const offsets: number[] = [0];
-  objects.forEach((object, index) => {
-    offsets.push(Buffer.byteLength(result, "ascii"));
-    result += `${index + 1} 0 obj\n${object}\nendobj\n`;
-  });
-  const xrefOffset = Buffer.byteLength(result, "ascii");
-  result += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  offsets.slice(1).forEach((offset) => {
-    result += `${String(offset).padStart(10, "0")} 00000 n \n`;
-  });
-  result += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-  return new TextEncoder().encode(result);
+
+  const chunks = [Buffer.from("%PDF-1.4\n", "ascii")];
+  const offsets = [0];
+  for (let index = 0; index < objectBodies.length; index += 1) {
+    const header = Buffer.from(`${index + 1} 0 obj\n`, "ascii");
+    const body = Buffer.from(`${objectBodies[index]}\nendobj\n`, "ascii");
+    offsets.push(Buffer.concat(chunks).byteLength);
+    chunks.push(header, body);
+  }
+  const xrefOffset = Buffer.concat(chunks).byteLength;
+  const xrefParts = [
+    Buffer.from(`xref\n0 ${objectBodies.length + 1}\n0000000000 65535 f \n`, "ascii"),
+    ...offsets.slice(1).map((offset) => Buffer.from(`${String(offset).padStart(10, "0")} 00000 n \n`, "ascii")),
+    Buffer.from(`trailer\n<< /Size ${objectBodies.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`, "ascii"),
+  ];
+  return Buffer.concat([...chunks, ...xrefParts]);
 };
 
 export const seedDemoDocumentStorage = async (

@@ -27,15 +27,22 @@ Upload resumability
 
 # Phase 3 - Better Internal UX
 
-Potential additions:
+Delivered in the Indigo Document Workspace iteration:
 
 ```txt
-Document preview
-PDF thumbnails
+Inline PDF preview surfaces
+PDF miniature/version surfaces
+Drag/drop PDF uploads
+Bulk approval for pending reviews
+Generated borrower upload links
+```
+
+Still planned:
+
+```txt
 Inline comments
 Annotations
-Drag/drop uploads
-Bulk actions
+Expanded bulk operations
 ```
 
 ---

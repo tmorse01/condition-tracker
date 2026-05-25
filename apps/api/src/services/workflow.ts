@@ -1,4 +1,5 @@
-import type { AuditLogEntry, Document, DocumentVersion } from "@condition-tracker/shared";
+import { createHash, randomBytes } from "node:crypto";
+import type { AuditLogEntry, Document, DocumentVersion, UploadSession } from "@condition-tracker/shared";
 import { state } from "../data.js";
 import { storageService } from "./storage.js";
 import { enqueueNotification } from "./jobs.js";
@@ -6,6 +7,7 @@ import { enqueueNotification } from "./jobs.js";
 const now = () => new Date().toISOString();
 
 const newId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
 const pushAudit = (entry: Omit<AuditLogEntry, "id" | "createdAt">) => {
   state.auditLog.unshift({ id: newId("audit"), createdAt: now(), ...entry });
@@ -41,6 +43,39 @@ export const getDocumentVersions = (documentId: string) =>
 export const getAuditLogForLoan = (loanId: string) => structuredClone(state.auditLog.filter((item) => item.loanId === loanId));
 export const getAuditLogForDocument = (documentId: string) => structuredClone(state.auditLog.filter((item) => item.documentId === documentId));
 export const getSession = (sessionId: string) => structuredClone(state.uploadSessions.find((item) => item.id === sessionId) ?? null);
+export const getEligibleUploadConditions = (loanId: string) =>
+  structuredClone(state.conditions.filter((item) => item.loanId === loanId && (item.status === "PendingUpload" || item.status === "NeedsMoreInfo")));
+
+export const createUploadSession = (loanId: string) => {
+  const loan = state.loans.find((item) => item.id === loanId);
+  if (!loan) return null;
+  const sessionId = newId("session");
+  const token = randomBytes(24).toString("base64url");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const session: UploadSession = {
+    id: sessionId,
+    loanId,
+    tokenHash: hashToken(token),
+    status: "Active",
+    expiresAt,
+    createdAt: now(),
+    usedAt: null,
+    revokedAt: null,
+  };
+  state.uploadSessions.unshift(session);
+  pushAudit({
+    loanId,
+    conditionId: null,
+    documentId: null,
+    documentVersionId: null,
+    actorType: "InternalUser",
+    actorName: "Avery Reviewer",
+    action: "UploadSessionCreated",
+    message: `Created borrower upload link for ${loan.loanNumber}.`,
+    metadataJson: JSON.stringify({ sessionId, expiresAt }),
+  });
+  return { sessionId, token, uploadUrl: `/upload/${sessionId}?token=${encodeURIComponent(token)}`, expiresAt };
+};
 
 export const getDocumentDetail = (documentId: string) => {
   const document = state.documents.find((item) => item.id === documentId);
@@ -97,23 +132,51 @@ export const getConditionDetail = (conditionId: string) => {
 export const validateSession = (sessionId: string, token?: string) => {
   const session = state.uploadSessions.find((item) => item.id === sessionId);
   if (!session) return { session: null, valid: false, reason: "Invalid Link" as const };
-  if (token && session.tokenHash !== token) return { session: structuredClone(session), valid: false, reason: "Invalid Link" as const };
+  if (!token || session.tokenHash !== hashToken(token)) return { session: structuredClone(session), valid: false, reason: "Invalid Link" as const };
   if (session.status === "Revoked") return { session: structuredClone(session), valid: false, reason: "Revoked Link" as const };
   if (session.status === "Used") return { session: structuredClone(session), valid: false, reason: "Upload Complete" as const };
   if (new Date(session.expiresAt).getTime() <= Date.now()) return { session: structuredClone(session), valid: false, reason: "Expired Link" as const };
   return { session: structuredClone(session), valid: true, reason: "Ready" as const };
 };
 
+export const getUploadSessionContext = (sessionId: string, token?: string) => {
+  const result = validateSession(sessionId, token);
+  const session = result.session;
+  const tokenAccepted = Boolean(token && session && session.tokenHash === hashToken(token));
+  if (!session || !tokenAccepted) {
+    return {
+      valid: false,
+      reason: "Invalid Link" as const,
+      session: null,
+      loan: null,
+      eligibleConditions: [],
+    };
+  }
+  const loan = session ? state.loans.find((item) => item.id === session.loanId) ?? null : null;
+  return {
+    valid: result.valid,
+    reason: result.reason,
+    session: session
+      ? { id: session.id, loanId: session.loanId, status: session.status, expiresAt: session.expiresAt }
+      : null,
+    loan: loan ? structuredClone(loan) : null,
+    eligibleConditions: getEligibleUploadConditions(session.loanId),
+  };
+};
+
 export const validateUploadPayload = (sessionId: string, conditionId: string, token: string) => {
   const session = state.uploadSessions.find((item) => item.id === sessionId);
   if (!session) return { ok: false as const, status: 404, message: "Upload session not found" };
-  if (session.tokenHash !== token) return { ok: false as const, status: 401, message: "Invalid token" };
+  if (session.tokenHash !== hashToken(token)) return { ok: false as const, status: 401, message: "Invalid token" };
   if (session.status === "Revoked") return { ok: false as const, status: 400, message: "Upload session revoked" };
   if (session.status === "Used") return { ok: false as const, status: 400, message: "Upload session already used" };
   if (new Date(session.expiresAt).getTime() <= Date.now()) return { ok: false as const, status: 400, message: "Upload session expired" };
 
   const condition = state.conditions.find((item) => item.id === conditionId && item.loanId === session.loanId);
   if (!condition) return { ok: false as const, status: 400, message: "Condition does not belong to this loan" };
+  if (condition.status !== "PendingUpload" && condition.status !== "NeedsMoreInfo") {
+    return { ok: false as const, status: 400, message: "Condition is not accepting uploads" };
+  }
 
   return { ok: true as const, session, condition };
 };
@@ -125,6 +188,7 @@ export const uploadDocument = (params: {
   title: string;
   fileName: string;
   contentType: string;
+  fileBytes: Uint8Array;
   fileSizeBytes: number;
   uploadedBy: string;
 }) => {
@@ -170,7 +234,7 @@ export const uploadDocument = (params: {
 
   void storageService.uploadFile({
     storageKey: version.storageKey,
-    bytes: new TextEncoder().encode(params.fileName),
+    bytes: params.fileBytes,
     contentType: params.contentType,
     fileName: params.fileName,
   });

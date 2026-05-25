@@ -1,14 +1,19 @@
-import { Badge, Button, Card, Container, Group, Loader, Paper, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
-import { useQueries } from "@tanstack/react-query";
+import { Alert, Badge, Button, Card, Checkbox, Group, Loader, Paper, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge";
-import { useLoansQuery } from "../hooks/queries";
 import { queryKeys } from "../hooks/queryKeys";
+import { useLoansQuery } from "../hooks/queries";
 import type { LoanBundle } from "../lib/api-types";
+import { reviewCondition } from "../services/api/conditions";
 import { getLoan } from "../services/api/loans";
 
 export function DashboardPage() {
   const loansQuery = useLoansQuery();
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<string[]>([]);
+  const [message, setMessage] = useState("");
   const loanBundles = useQueries({
     queries: (loansQuery.data ?? []).map((loan) => ({
       queryKey: queryKeys.loan(loan.id),
@@ -18,182 +23,169 @@ export function DashboardPage() {
   });
   const bundles = loanBundles.map((query) => query.data).filter((bundle): bundle is LoanBundle => Boolean(bundle));
   const pendingReviews = bundles.flatMap((bundle) =>
-    bundle.conditions.filter((condition) => condition.status === "PendingReview").map((condition) => ({ ...condition, loanNumber: bundle.loan.loanNumber })),
+    bundle.conditions
+      .filter((condition) => condition.status === "PendingReview")
+      .map((condition) => {
+        const latestLink = bundle.conditionDocuments
+          .filter((link) => link.conditionId === condition.id)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+        const version = bundle.documentVersions.find((item) => item.id === latestLink?.documentVersionId);
+        return { ...condition, loan: bundle.loan, version };
+      })
+      .filter((condition) => condition.version?.reviewStatus === "Pending"),
   );
-  const recentUploads = bundles
-    .flatMap((bundle) =>
-      bundle.documentVersions.map((version) => ({
-        ...version,
-        loanNumber: bundle.loan.loanNumber,
-        documentTitle: bundle.documents.find((document) => document.id === version.documentId)?.title ?? "Document",
-      })),
-    )
-    .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+  const outstandingUploads = bundles.flatMap((bundle) =>
+    bundle.conditions.filter((condition) => condition.status === "PendingUpload" || condition.status === "NeedsMoreInfo"),
+  );
+  const activity = bundles
+    .flatMap((bundle) => bundle.auditLog.map((entry) => ({ ...entry, loanNumber: bundle.loan.loanNumber })))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 5);
 
-  return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
-        <Paper
-          withBorder
-          radius="xl"
-          p="xl"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(17, 24, 39, 0.96) 0%, rgba(31, 41, 55, 0.94) 48%, rgba(34, 102, 63, 0.94) 100%)",
-            color: "white",
-            boxShadow: "0 24px 70px rgba(15, 23, 42, 0.18)",
-          }}
-        >
-          <Group justify="space-between" align="start" wrap="wrap">
-            <Stack gap="sm" maw={660}>
-              <Badge variant="light" color="lime" size="lg">
-                Construction-loan workflow OS
-              </Badge>
-              <Title order={1} c="white">
-                ConditionFlow keeps uploads, reviews, and approvals moving.
-              </Title>
-              <Text c="rgba(255,255,255,0.78)" size="lg">
-                Secure borrower uploads, clean internal review, and full condition history in one operational workspace.
-              </Text>
-              <Group gap="xs">
-                <Button component={Link} to="/loans" size="md" color="lime">
-                  Open review queue
-                </Button>
-                <Button component={Link} to="/upload/session_2?token=token_2" size="md" variant="white" color="dark">
-                  Demo upload link
-                </Button>
-              </Group>
-            </Stack>
-            <Card radius="lg" p="lg" withBorder style={{ minWidth: 260, background: "rgba(255,255,255,0.08)", color: "white" }}>
-              <Text size="sm" c="rgba(255,255,255,0.72)">
-                Demo snapshot
-              </Text>
-              <Stack mt="md" gap="sm">
-                <Group justify="space-between">
-                  <Text size="sm">Open loans</Text>
-                  <Text fw={700}>{loansQuery.data?.length ?? 0}</Text>
-                </Group>
-                <Group justify="space-between">
-                  <Text size="sm">Pending reviews</Text>
-                  <Text fw={700}>{pendingReviews.length}</Text>
-                </Group>
-                <Group justify="space-between">
-                  <Text size="sm">Recent uploads</Text>
-                  <Text fw={700}>{recentUploads.length}</Text>
-                </Group>
-              </Stack>
-            </Card>
-          </Group>
-          {loansQuery.isLoading ? <Loader mt="md" color="lime" /> : null}
-        </Paper>
+  const bulkApprove = useMutation({
+    mutationFn: async (conditionIds: string[]) => {
+      const outcomes = await Promise.allSettled(
+        conditionIds.map((conditionId) => reviewCondition(conditionId, { action: "Approved", reviewerName: "Avery Reviewer" })),
+      );
+      return outcomes.filter((outcome) => outcome.status === "rejected").length;
+    },
+    onSuccess: async (failedCount) => {
+      await queryClient.invalidateQueries({ queryKey: ["loan"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.loans });
+      setMessage(failedCount ? `Approved ${selected.length - failedCount} items; ${failedCount} could not be approved.` : `Approved ${selected.length} document requests.`);
+      setSelected([]);
+    },
+  });
 
-        <SimpleGrid cols={{ base: 1, md: 3 }}>
-          <Card withBorder radius="md" p="lg">
-            <Group justify="space-between" align="center">
-              <Title order={4}>Recent loans</Title>
-              <Badge variant="light">Queue</Badge>
-            </Group>
-            <Stack mt="md" gap="xs">
-              {(loansQuery.data ?? []).slice(0, 3).map((loan) => (
-                <Group key={loan.id} justify="space-between" align="center">
-                  <div>
-                    <Text fw={600}>{loan.loanNumber}</Text>
-                    <Text size="sm" c="dimmed">
-                      {loan.borrowerName}
-                    </Text>
-                  </div>
-                  <StatusBadge status={loan.status} />
-                </Group>
-              ))}
-            </Stack>
+  return (
+    <div className="page-surface">
+      <Stack gap="lg">
+        <Group justify="space-between" align="end">
+          <div>
+            <Text size="sm" c="indigo.7" fw={700}>HOME</Text>
+            <Title order={1} mt={4}>Document review workspace</Title>
+            <Text c="dimmed">Review borrower submissions and keep construction-loan conditions moving.</Text>
+          </div>
+          <Button component={Link} to="/loans">Browse loans</Button>
+        </Group>
+
+        <SimpleGrid cols={{ base: 1, sm: 3 }}>
+          <Card withBorder radius="lg" p="lg">
+            <Text size="sm" c="dimmed">Active loans</Text>
+            <Title order={2} mt={6}>{loansQuery.data?.length ?? 0}</Title>
+            <Text size="sm" c="dimmed">Open portfolio records</Text>
           </Card>
-          <Card withBorder radius="md" p="lg">
-            <Group justify="space-between" align="center">
-              <Title order={4}>Pending reviews</Title>
-              <Badge variant="light" color="yellow">
-                Action needed
-              </Badge>
-            </Group>
-            <Stack mt="md" gap="xs">
-              {pendingReviews.map((condition) => (
-                <Group key={condition.id} justify="space-between" align="center">
-                  <div>
-                    <Text fw={600}>{condition.title}</Text>
-                    <Text size="sm" c="dimmed">
-                      Loan {condition.loanNumber}
-                    </Text>
-                  </div>
-                  <Button component={Link} to={`/conditions/${condition.id}`} variant="light">
-                    Open
-                  </Button>
-                </Group>
-              ))}
-              {!pendingReviews.length ? (
-                <Text size="sm" c="dimmed">
-                  No conditions waiting on review right now.
-                </Text>
-              ) : null}
-            </Stack>
+          <Card withBorder radius="lg" p="lg">
+            <Text size="sm" c="dimmed">Pending review</Text>
+            <Title order={2} mt={6}>{pendingReviews.length}</Title>
+            <Text size="sm" c="dimmed">Documents ready for decision</Text>
           </Card>
-          <Card withBorder radius="md" p="lg">
-            <Group justify="space-between" align="center">
-              <Title order={4}>Recent uploads</Title>
-              <Badge variant="light" color="green">
-                Activity
-              </Badge>
-            </Group>
-            <Stack mt="md" gap="xs">
-              {recentUploads.map((version) => (
-                <Group key={version.id} justify="space-between" align="center">
-                  <div>
-                    <Text fw={600}>{version.fileName}</Text>
-                    <Text size="sm" c="dimmed">
-                      {version.documentTitle} on Loan {version.loanNumber}
-                    </Text>
-                  </div>
-                  <StatusBadge status={version.reviewStatus} />
-                </Group>
-              ))}
-            </Stack>
+          <Card withBorder radius="lg" p="lg">
+            <Text size="sm" c="dimmed">Awaiting upload</Text>
+            <Title order={2} mt={6}>{outstandingUploads.length}</Title>
+            <Text size="sm" c="dimmed">Requests outstanding</Text>
           </Card>
         </SimpleGrid>
 
-        <Card withBorder radius="md" p="lg">
-          <Group justify="space-between">
-            <Title order={4}>Loans</Title>
-            <Button component={Link} to="/loans" variant="default">
-              Open list
+        <Paper withBorder radius="lg" p="lg">
+          <Group justify="space-between" mb="md">
+            <div>
+              <Title order={3}>Pending approvals</Title>
+              <Text size="sm" c="dimmed">Select pending documents to approve together. Rejections remain individual reviews.</Text>
+            </div>
+            <Button
+              disabled={!selected.length}
+              loading={bulkApprove.isPending}
+              onClick={() => {
+                setMessage("");
+                bulkApprove.mutate(selected);
+              }}
+            >
+              Approve selected ({selected.length})
             </Button>
           </Group>
-          <Table mt="md" highlightOnHover verticalSpacing="sm">
+          {message ? <Alert color="indigo" variant="light" mb="md">{message}</Alert> : null}
+          {loansQuery.isLoading ? <Loader /> : null}
+          <Table highlightOnHover verticalSpacing="md">
             <Table.Thead>
               <Table.Tr>
+                <Table.Th w={44} />
+                <Table.Th>Requirement</Table.Th>
                 <Table.Th>Loan</Table.Th>
-                <Table.Th>Borrower</Table.Th>
+                <Table.Th>Document</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {(loansQuery.data ?? []).map((loan) => (
-                <Table.Tr key={loan.id}>
-                  <Table.Td>{loan.loanNumber}</Table.Td>
-                  <Table.Td>{loan.borrowerName}</Table.Td>
+              {pendingReviews.map((condition) => (
+                <Table.Tr key={condition.id}>
                   <Table.Td>
-                    <StatusBadge status={loan.status} />
+                    <Checkbox
+                      aria-label={`Select ${condition.title}`}
+                      checked={selected.includes(condition.id)}
+                      onChange={(event) => {
+                        const checked = Boolean(event?.currentTarget?.checked);
+                        setSelected((current) =>
+                          checked ? [...current, condition.id] : current.filter((id) => id !== condition.id),
+                        );
+                      }}
+                    />
                   </Table.Td>
                   <Table.Td>
-                    <Button component={Link} to={`/loans/${loan.id}`} variant="subtle">
-                      Open
-                    </Button>
+                    <Text fw={600}>{condition.title}</Text>
+                    <Text size="xs" c="dimmed">Due {new Date(condition.dueDate ?? "").toLocaleDateString()}</Text>
+                  </Table.Td>
+                  <Table.Td>{condition.loan.loanNumber}</Table.Td>
+                  <Table.Td>{condition.version?.fileName ?? "No file"}</Table.Td>
+                  <Table.Td><StatusBadge status={condition.status} /></Table.Td>
+                  <Table.Td>
+                    <Button component={Link} to={`/conditions/${condition.id}`} variant="subtle">Review</Button>
                   </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
           </Table>
-        </Card>
+          {!pendingReviews.length && !loansQuery.isLoading ? (
+            <Text size="sm" c="dimmed" ta="center" py="xl">There are no documents waiting for review.</Text>
+          ) : null}
+        </Paper>
+
+        <SimpleGrid cols={{ base: 1, md: 2 }}>
+          <Card withBorder radius="lg" p="lg">
+            <Group justify="space-between" mb="md">
+              <Title order={4}>Awaiting borrower upload</Title>
+              <Badge color="indigo" variant="light">{outstandingUploads.length} open</Badge>
+            </Group>
+            <Stack gap="sm">
+              {bundles.flatMap((bundle) =>
+                bundle.conditions
+                  .filter((condition) => condition.status === "PendingUpload" || condition.status === "NeedsMoreInfo")
+                  .map((condition) => (
+                    <Group key={condition.id} justify="space-between">
+                      <div>
+                        <Text size="sm" fw={600}>{condition.title}</Text>
+                        <Text size="xs" c="dimmed">{bundle.loan.loanNumber} - {bundle.loan.borrowerName}</Text>
+                      </div>
+                      <StatusBadge status={condition.status} />
+                    </Group>
+                  )),
+              )}
+            </Stack>
+          </Card>
+          <Card withBorder radius="lg" p="lg">
+            <Title order={4} mb="md">Recent activity</Title>
+            <Stack gap="md">
+              {activity.map((entry) => (
+                <div key={entry.id}>
+                  <Text size="sm" fw={600}>{entry.message}</Text>
+                  <Text size="xs" c="dimmed">{entry.loanNumber} - {new Date(entry.createdAt).toLocaleString()}</Text>
+                </div>
+              ))}
+            </Stack>
+          </Card>
+        </SimpleGrid>
       </Stack>
-    </Container>
+    </div>
   );
 }

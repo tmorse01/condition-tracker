@@ -52,5 +52,14 @@ export type UploadSessionValidationResponse = {
   sessionId: string;
   valid: boolean;
   reason?: string;
-  session: Pick<UploadSession, "loanId" | "status"> | null;
+  session: Pick<UploadSession, "id" | "loanId" | "status" | "expiresAt"> | null;
+  loan: Loan | null;
+  eligibleConditions: Condition[];
+};
+
+export type UploadSessionLink = {
+  sessionId: string;
+  token: string;
+  uploadUrl: string;
+  expiresAt: string;
 };

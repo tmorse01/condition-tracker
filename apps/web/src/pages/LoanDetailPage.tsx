@@ -1,161 +1,163 @@
-import { Badge, Button, Card, Container, Grid, Group, Loader, Paper, Stack, Tabs, Text, Title } from "@mantine/core";
+import { Alert, Badge, Button, Card, CopyButton, Grid, Group, Loader, Paper, Stack, Tabs, Text, Title } from "@mantine/core";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
+import { PdfThumbnail } from "../components/PdfPreview";
 import { StatusBadge } from "../components/StatusBadge";
+import { queryKeys } from "../hooks/queryKeys";
 import { useLoanQuery } from "../hooks/queries";
+import { createUploadSession } from "../services/api/upload-sessions";
 
 export function LoanDetailPage() {
   const { loanId = "" } = useParams();
+  const queryClient = useQueryClient();
   const { data, isLoading } = useLoanQuery(loanId);
+  const sessionMutation = useMutation({
+    mutationFn: () => createUploadSession(loanId),
+    onSuccess: async () => queryClient.invalidateQueries({ queryKey: queryKeys.loan(loanId) }),
+  });
 
-  if (isLoading) return <Container size="lg" py="xl"><Loader /></Container>;
-  if (!data) return <Container size="lg" py="xl">Loan not found.</Container>;
+  if (isLoading) return <div className="page-surface"><Loader /></div>;
+  if (!data) return <div className="page-surface">Loan not found.</div>;
 
   const { loan, conditions, documents, documentVersions, auditLog } = data;
+  const uploadLink = sessionMutation.data ? `${window.location.origin}${sessionMutation.data.uploadUrl}` : "";
+  const pendingReviewCount = conditions.filter((condition) => condition.status === "PendingReview").length;
+  const outstandingCount = conditions.filter((condition) => condition.status === "PendingUpload" || condition.status === "NeedsMoreInfo").length;
 
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="md">
-        <Group justify="space-between" align="end">
+    <div className="page-surface">
+      <Stack gap="lg">
+        <Group justify="space-between" align="start">
           <div>
-            <Badge variant="light" color="lime" mb="xs">
-              Loan record
-            </Badge>
-            <Title order={2}>{loan.loanNumber}</Title>
-            <Text c="dimmed">
-              {loan.borrowerName} • {loan.propertyAddress}
-            </Text>
+            <Button component={Link} to="/loans" variant="subtle" px={0} mb="sm">Back to loans</Button>
+            <Group gap="sm">
+              <Title order={1}>{loan.loanNumber}</Title>
+              <StatusBadge status={loan.status} />
+            </Group>
+            <Text c="dimmed">{loan.borrowerName} - {loan.propertyAddress}</Text>
           </div>
-          <Button component={Link} to="/loans" variant="default">
-            Back
+          <Button onClick={() => sessionMutation.mutate()} loading={sessionMutation.isPending} disabled={!outstandingCount}>
+            Create upload link
           </Button>
         </Group>
 
+        {sessionMutation.data ? (
+          <Alert color="indigo" variant="light" title="Secure borrower link created">
+            <Stack gap="xs">
+              <Text size="sm">Expires {new Date(sessionMutation.data.expiresAt).toLocaleString()}. One outstanding PDF may be submitted with this link.</Text>
+              <Group>
+                <Text size="sm" ff="monospace" lineClamp={1}>{uploadLink}</Text>
+                <CopyButton value={uploadLink}>
+                  {({ copied, copy }) => <Button size="xs" variant="light" onClick={copy}>{copied ? "Copied" : "Copy link"}</Button>}
+                </CopyButton>
+                <Button component="a" href={sessionMutation.data.uploadUrl} target="_blank" size="xs" variant="subtle">Open</Button>
+              </Group>
+            </Stack>
+          </Alert>
+        ) : null}
+
         <Grid>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Card withBorder radius="lg" p="lg" h="100%">
-              <Text size="sm" c="dimmed">
-                Borrower
-              </Text>
-              <Title order={4}>{loan.borrowerName}</Title>
-              <Text size="sm" c="dimmed" mt="xs">
-                {loan.propertyAddress}
-              </Text>
+          <Grid.Col span={{ base: 12, sm: 4 }}>
+            <Card withBorder radius="lg" p="lg">
+              <Text size="sm" c="dimmed">Tracked requirements</Text>
+              <Title order={2} mt="xs">{conditions.length}</Title>
+              <Text size="sm" c="dimmed">{outstandingCount ? `${outstandingCount} awaiting upload` : "No uploads currently requested"}</Text>
             </Card>
           </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Card withBorder radius="lg" p="lg" h="100%">
-              <Text size="sm" c="dimmed">
-                Conditions
-              </Text>
-              <Title order={4}>{conditions.length}</Title>
-              <Text size="sm" c="dimmed" mt="xs">
-                Requirements tracked for the loan
-              </Text>
+          <Grid.Col span={{ base: 12, sm: 4 }}>
+            <Card withBorder radius="lg" p="lg">
+              <Text size="sm" c="dimmed">Pending decisions</Text>
+              <Title order={2} mt="xs">{pendingReviewCount}</Title>
+              <Text size="sm" c="dimmed">Ready for reviewer action</Text>
             </Card>
           </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Card withBorder radius="lg" p="lg" h="100%">
-              <Text size="sm" c="dimmed">
-                Status
-              </Text>
-              <StatusBadge status={loan.status} />
-              <Text size="sm" c="dimmed" mt="xs">
-                Current portfolio state
-              </Text>
+          <Grid.Col span={{ base: 12, sm: 4 }}>
+            <Card withBorder radius="lg" p="lg">
+              <Text size="sm" c="dimmed">Documents</Text>
+              <Title order={2} mt="xs">{documents.length}</Title>
+              <Text size="sm" c="dimmed">Versioned borrower files</Text>
             </Card>
           </Grid.Col>
         </Grid>
 
         <Paper withBorder radius="lg" p="lg">
-          <Tabs defaultValue="overview">
-            <Tabs.List>
+          <Tabs defaultValue="conditions" color="indigo">
+            <Tabs.List mb="lg">
               <Tabs.Tab value="overview">Overview</Tabs.Tab>
               <Tabs.Tab value="conditions">Conditions</Tabs.Tab>
               <Tabs.Tab value="documents">Documents</Tabs.Tab>
-              <Tabs.Tab value="audit">Audit Log</Tabs.Tab>
+              <Tabs.Tab value="audit">Audit log</Tabs.Tab>
             </Tabs.List>
-            <Tabs.Panel value="overview" pt="md">
-              <Stack gap="sm">
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">
-                    Borrower
-                  </Text>
-                  <Text size="sm">{loan.borrowerName}</Text>
-                </Group>
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">
-                    Property
-                  </Text>
-                  <Text size="sm">{loan.propertyAddress}</Text>
-                </Group>
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">
-                    Loan status
-                  </Text>
-                  <StatusBadge status={loan.status} />
-                </Group>
-              </Stack>
+            <Tabs.Panel value="overview">
+              <Grid>
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                  <Stack gap="sm">
+                    <Text size="xs" c="dimmed" fw={700}>BORROWER</Text>
+                    <Text fw={600}>{loan.borrowerName}</Text>
+                    <Text>{loan.propertyAddress}</Text>
+                  </Stack>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                  <Stack gap="sm">
+                    <Text size="xs" c="dimmed" fw={700}>NEXT ACTION</Text>
+                    <Text>{outstandingCount ? "Send a borrower upload link for outstanding items." : "Review submitted documents and close requirements."}</Text>
+                  </Stack>
+                </Grid.Col>
+              </Grid>
             </Tabs.Panel>
-            <Tabs.Panel value="conditions" pt="md">
-              <Stack>
+            <Tabs.Panel value="conditions">
+              <Stack gap={0}>
                 {conditions.map((condition) => (
-                  <Group key={condition.id} justify="space-between">
+                  <Group key={condition.id} justify="space-between" py="md" style={{ borderBottom: "1px solid #e2e8f0" }}>
                     <div>
                       <Text fw={600}>{condition.title}</Text>
-                      <Text size="sm" c="dimmed">
-                        {condition.description}
-                      </Text>
+                      <Text size="sm" c="dimmed">{condition.description}</Text>
                     </div>
                     <Group>
                       <StatusBadge status={condition.status} />
-                      <Button component={Link} to={`/conditions/${condition.id}`} variant="subtle">
-                        Open review
-                      </Button>
+                      {condition.status === "PendingReview" ? (
+                        <Button component={Link} to={`/conditions/${condition.id}`} variant="light">Review</Button>
+                      ) : null}
                     </Group>
                   </Group>
                 ))}
               </Stack>
             </Tabs.Panel>
-            <Tabs.Panel value="documents" pt="md">
-              <Stack>
+            <Tabs.Panel value="documents">
+              <Grid>
                 {documents.map((document) => {
-                  const currentVersion = documentVersions.find((version) => version.id === document.currentVersionId);
+                  const current = documentVersions.find((version) => version.id === document.currentVersionId);
                   return (
-                    <Card key={document.id} withBorder radius="lg" p="md">
-                      <Group justify="space-between">
-                        <div>
-                          <Text fw={600}>{document.title}</Text>
-                          <Text size="sm" c="dimmed">
-                            Current version: {currentVersion?.fileName ?? "None"}
-                          </Text>
-                        </div>
-                        <Group>
-                          {currentVersion ? <StatusBadge status={currentVersion.reviewStatus} /> : null}
-                          <Button component={Link} to={`/documents/${document.id}`} variant="subtle">
-                            Open
-                          </Button>
+                    <Grid.Col key={document.id} span={{ base: 12, sm: 6, lg: 4 }}>
+                      <Card withBorder radius="md" p="sm">
+                        {current ? <PdfThumbnail versionId={current.id} label={current.fileName} /> : null}
+                        <Text fw={600} mt="sm">{document.title}</Text>
+                        <Group justify="space-between" mt="xs">
+                          {current ? <StatusBadge status={current.reviewStatus} /> : <Badge variant="light">No file</Badge>}
+                          <Button component={Link} to={`/documents/${document.id}`} variant="subtle" size="xs">View</Button>
                         </Group>
-                      </Group>
-                    </Card>
+                      </Card>
+                    </Grid.Col>
                   );
                 })}
-              </Stack>
+              </Grid>
             </Tabs.Panel>
-            <Tabs.Panel value="audit" pt="md">
-              <Stack>
+            <Tabs.Panel value="audit">
+              <Stack gap="md">
                 {auditLog.map((entry) => (
-                  <Card key={entry.id} withBorder radius="md" p="sm">
-                    <Text size="xs" c="dimmed">
-                      {entry.action}
-                    </Text>
-                    <Text size="sm">{entry.message}</Text>
-                  </Card>
+                  <Group key={entry.id} justify="space-between">
+                    <div>
+                      <Text fw={600} size="sm">{entry.message}</Text>
+                      <Text size="xs" c="dimmed">{entry.actorName} - {entry.action}</Text>
+                    </div>
+                    <Text size="xs" c="dimmed">{new Date(entry.createdAt).toLocaleString()}</Text>
+                  </Group>
                 ))}
               </Stack>
             </Tabs.Panel>
           </Tabs>
         </Paper>
       </Stack>
-    </Container>
+    </div>
   );
 }

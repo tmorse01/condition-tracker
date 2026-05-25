@@ -8,3 +8,5 @@ export const getLoanConditions = (loanId: string) => requestJson<LoanBundle["con
 export const getLoanDocuments = (loanId: string) => requestJson<LoanBundle["documents"]>(`/api/loans/${loanId}/documents`);
 export const getLoanAuditLog = (loanId: string) => requestJson<LoanBundle["auditLog"]>(`/api/loans/${loanId}/audit-log`);
 export const getDocument = (documentId: string) => requestJson<DocumentDetail>(`/api/documents/${documentId}`);
+export const downloadDocumentVersion = (versionId: string) =>
+  requestJson<{ versionId: string; downloadUrl: string; fileName: string }>(`/api/document-versions/${versionId}/download`);

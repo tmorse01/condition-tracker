@@ -1,4 +1,5 @@
 import "@mantine/core/styles.css";
+import "./styles.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createTheme, MantineProvider, rem } from "@mantine/core";
@@ -13,7 +14,21 @@ const theme = createTheme({
     fontFamily: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontWeight: "700",
   },
-  primaryColor: "lime",
+  colors: {
+    indigo: [
+      "#eef2ff",
+      "#e0e7ff",
+      "#c7d2fe",
+      "#a5b4fc",
+      "#818cf8",
+      "#6366f1",
+      "#4f46e5",
+      "#4338ca",
+      "#3730a3",
+      "#312e81",
+    ],
+  },
+  primaryColor: "indigo",
   primaryShade: 6,
   defaultRadius: "md",
   spacing: {
