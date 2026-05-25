@@ -21,6 +21,22 @@ export type LoanBundle = {
   notifications: Array<{ id: string; templateKey: string; status: string; createdAt: string }>;
 };
 
+export type DocumentDetail = {
+  document: Document;
+  loan: Loan | null;
+  versions: DocumentVersion[];
+  auditLog: AuditLogEntry[];
+  conditionLinks: Array<{
+    id: string;
+    conditionId: string;
+    documentId: string;
+    documentVersionId: string;
+    status: string;
+    createdAt: string;
+  }>;
+  associatedConditions: Condition[];
+};
+
 export type ConditionDetail = {
   condition: Condition;
   loan: Loan | null;

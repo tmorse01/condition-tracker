@@ -1,7 +1,7 @@
 import { Button, Card, Container, Group, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge";
 import { useUploadSessionValidationQuery } from "../hooks/queries";
 import { queryKeys } from "../hooks/queryKeys";
@@ -12,7 +12,6 @@ export function UploadSessionPage() {
   const { sessionId = "" } = useParams();
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data } = useUploadSessionValidationQuery(sessionId, token);
   const [conditionId, setConditionId] = useState("cond_1");
@@ -28,11 +27,16 @@ export function UploadSessionPage() {
       if (data?.session?.loanId) {
         await queryClient.invalidateQueries({ queryKey: queryKeys.loan(data.session.loanId) });
       }
-      navigate(`/upload/${sessionId}?token=${encodeURIComponent(token)}`, { replace: true });
     },
   });
 
-  const state = data?.valid ? "Ready" : data?.reason ?? "Validating";
+  const state = mutation.isPending
+    ? "Uploading"
+    : data?.valid
+      ? "Ready"
+      : data?.reason === "Upload Complete"
+        ? "Complete"
+        : data?.reason ?? "Validating";
   const isReady = data?.valid ?? false;
 
   const validConditions = useMemo(
@@ -69,7 +73,7 @@ export function UploadSessionPage() {
                 }
               }}
               loading={mutation.isPending}
-              disabled={!isReady}
+              disabled={!isReady || state === "Complete"}
             >
               Upload
             </Button>

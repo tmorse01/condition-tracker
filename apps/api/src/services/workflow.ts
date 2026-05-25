@@ -42,6 +42,26 @@ export const getAuditLogForLoan = (loanId: string) => structuredClone(state.audi
 export const getAuditLogForDocument = (documentId: string) => structuredClone(state.auditLog.filter((item) => item.documentId === documentId));
 export const getSession = (sessionId: string) => structuredClone(state.uploadSessions.find((item) => item.id === sessionId) ?? null);
 
+export const getDocumentDetail = (documentId: string) => {
+  const document = state.documents.find((item) => item.id === documentId);
+  if (!document) return null;
+  const loan = state.loans.find((item) => item.id === document.loanId) ?? null;
+  const versions = state.documentVersions
+    .filter((item) => item.documentId === documentId)
+    .sort((a, b) => b.versionNumber - a.versionNumber);
+  const conditionLinks = state.conditionDocuments.filter((item) => item.documentId === documentId);
+  const associatedConditions = state.conditions.filter((item) => conditionLinks.some((link) => link.conditionId === item.id));
+
+  return structuredClone({
+    document,
+    loan,
+    versions,
+    auditLog: state.auditLog.filter((item) => item.documentId === documentId || item.documentVersionId === versions[0]?.id),
+    conditionLinks,
+    associatedConditions,
+  });
+};
+
 export const getConditionDetail = (conditionId: string) => {
   const condition = state.conditions.find((item) => item.id === conditionId);
   if (!condition) return null;

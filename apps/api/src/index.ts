@@ -6,6 +6,7 @@ import {
   getConditionDetail,
   getConditions,
   getDocument,
+  getDocumentDetail,
   getDocumentVersion,
   getDocumentVersions,
   getDocuments,
@@ -141,7 +142,7 @@ const server = createServer(async (req, res) => {
 
   const documentMatch = url.pathname.match(/^\/api\/documents\/([^/]+)$/);
   if (documentMatch && method === "GET") {
-    const document = getDocument(documentMatch[1]);
+    const document = getDocumentDetail(documentMatch[1]);
     if (!document) return send(res, json(404, { error: "Document not found" }));
     return send(res, json(200, { data: document }));
   }

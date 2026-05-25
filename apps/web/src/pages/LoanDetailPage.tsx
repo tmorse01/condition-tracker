@@ -25,12 +25,35 @@ export function LoanDetailPage() {
           </Button>
         </Group>
         <Card withBorder radius="md">
-          <Tabs defaultValue="conditions">
+          <Tabs defaultValue="overview">
             <Tabs.List>
+              <Tabs.Tab value="overview">Overview</Tabs.Tab>
               <Tabs.Tab value="conditions">Conditions</Tabs.Tab>
               <Tabs.Tab value="documents">Documents</Tabs.Tab>
               <Tabs.Tab value="audit">Audit Log</Tabs.Tab>
             </Tabs.List>
+            <Tabs.Panel value="overview" pt="md">
+              <Stack gap="sm">
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">
+                    Borrower
+                  </Text>
+                  <Text size="sm">{loan.borrowerName}</Text>
+                </Group>
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">
+                    Property
+                  </Text>
+                  <Text size="sm">{loan.propertyAddress}</Text>
+                </Group>
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">
+                    Loan status
+                  </Text>
+                  <StatusBadge status={loan.status} />
+                </Group>
+              </Stack>
+            </Tabs.Panel>
             <Tabs.Panel value="conditions" pt="md">
               <Stack>
                 {conditions.map((condition) => (
@@ -60,7 +83,12 @@ export function LoanDetailPage() {
                           <Text fw={600}>{document.title}</Text>
                           <Text size="sm" c="dimmed">Current version: {currentVersion?.fileName ?? "None"}</Text>
                         </div>
-                        {currentVersion ? <StatusBadge status={currentVersion.reviewStatus} /> : null}
+                        <Group>
+                          {currentVersion ? <StatusBadge status={currentVersion.reviewStatus} /> : null}
+                          <Button component={Link} to={`/documents/${document.id}`} variant="subtle">
+                            Open
+                          </Button>
+                        </Group>
                       </Group>
                     </Card>
                   );
