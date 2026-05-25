@@ -34,7 +34,7 @@ Private object storage.
 
 # Environment Variables
 
-````txt
+```txt
 DATABASE_URL
 STORAGE_BUCKET_NAME
 STORAGE_ACCESS_KEY_ID
@@ -44,7 +44,7 @@ STORAGE_REGION
 APP_BASE_URL
 API_BASE_URL
 MAGIC_LINK_SECRET
-````
+```
 
 ---
 
@@ -63,10 +63,10 @@ Single Railway project containing:
 
 # Future Improvements
 
-````txt
+```txt
 Preview environments
 CI/CD
 Separate worker service
 Monitoring
 Centralized logging
-````
+```

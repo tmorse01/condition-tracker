@@ -6,7 +6,8 @@
     "moduleResolution": "Bundler",
     "types": ["node"],
     "rootDir": "../..",
-    "outDir": "dist"
+    "outDir": "dist",
+    "noEmit": false
   },
   "include": ["src", "../../packages/shared/src"]
 }
