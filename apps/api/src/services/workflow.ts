@@ -1,8 +1,7 @@
-import type { AuditLogEntry, Document, DocumentVersion, Notification } from "@condition-tracker/shared";
+import type { AuditLogEntry, Document, DocumentVersion } from "@condition-tracker/shared";
 import { state } from "../data.js";
-
-const storageKeyForVersion = (loanId: string, documentId: string, versionId: string, fileName: string) =>
-  `loans/${loanId}/documents/${documentId}/versions/${versionId}/${fileName}`;
+import { storageService } from "./storage.js";
+import { enqueueNotification } from "./jobs.js";
 
 const now = () => new Date().toISOString();
 
@@ -10,19 +9,6 @@ const newId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(
 
 const pushAudit = (entry: Omit<AuditLogEntry, "id" | "createdAt">) => {
   state.auditLog.unshift({ id: newId("audit"), createdAt: now(), ...entry });
-};
-
-const pushNotification = (entry: Omit<Notification, "id" | "createdAt" | "attemptCount" | "status" | "sentAt">) => {
-  const notification: Notification = {
-    id: newId("notif"),
-    createdAt: now(),
-    attemptCount: 1,
-    status: "Sent",
-    sentAt: now(),
-    ...entry,
-  };
-  state.notifications.unshift(notification);
-  return notification;
 };
 
 export const getLoans = () => structuredClone(state.loans);
@@ -152,7 +138,7 @@ export const uploadDocument = (params: {
     fileName: params.fileName,
     contentType: params.contentType,
     fileSizeBytes: params.fileSizeBytes,
-    storageKey: storageKeyForVersion(session.loanId, document.id, versionId, params.fileName),
+    storageKey: `loans/${session.loanId}/documents/${document.id}/versions/${versionId}/${params.fileName}`,
     uploadStatus: "Uploaded",
     reviewStatus: "Pending",
     reviewNotes: null,
@@ -161,6 +147,13 @@ export const uploadDocument = (params: {
     reviewedBy: null,
     reviewedAt: null,
   };
+
+  void storageService.uploadFile({
+    storageKey: version.storageKey,
+    bytes: new TextEncoder().encode(params.fileName),
+    contentType: params.contentType,
+    fileName: params.fileName,
+  });
 
   state.documentVersions.unshift(version);
   document.currentVersionId = version.id;
@@ -244,7 +237,7 @@ const reviewConditionVersion = (
     metadataJson: JSON.stringify({ versionId: version.id, outcome, notes: version.reviewNotes }),
   });
 
-  pushNotification({
+  enqueueNotification({
     recipient: "Borrower",
     templateKey: outcome === "Approved" ? "document-approved" : "document-rejected",
     payloadJson: JSON.stringify({

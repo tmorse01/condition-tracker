@@ -17,6 +17,8 @@ import {
   validateSession,
   validateUploadPayload,
 } from "./services/workflow.js";
+import { runBackgroundJobs } from "./services/jobs.js";
+import { resolveTemporaryDownload, storageService } from "./services/storage.js";
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
@@ -153,7 +155,21 @@ const server = createServer(async (req, res) => {
   if (downloadMatch && method === "GET") {
     const version = getDocumentVersion(downloadMatch[1]);
     if (!version) return send(res, json(404, { error: "Document version not found" }));
-    return send(res, json(200, { data: { versionId: version.id, storageKey: version.storageKey, fileName: version.fileName } }));
+    const downloadUrl = await storageService.getDownloadUrl(version.storageKey);
+    return send(res, json(200, { data: { versionId: version.id, downloadUrl, fileName: version.fileName } }));
+  }
+
+  const storageDownloadMatch = url.pathname.match(/^\/api\/storage\/download\/([^/]+)$/);
+  if (storageDownloadMatch && method === "GET") {
+    const storageKey = resolveTemporaryDownload(storageDownloadMatch[1]);
+    if (!storageKey) return send(res, json(404, { error: "Download link expired" }));
+    const file = await storageService.readFile(storageKey);
+    if (!file) return send(res, json(404, { error: "File not found" }));
+    res.statusCode = 200;
+    res.setHeader("content-type", file.contentType);
+    res.setHeader("content-disposition", `attachment; filename=\"${file.fileName}\"`);
+    res.end(file.bytes);
+    return;
   }
 
   const versionApproveMatch = url.pathname.match(/^\/api\/document-versions\/([^/]+)\/approve$/);
@@ -193,6 +209,10 @@ const server = createServer(async (req, res) => {
 
   return send(res, json(404, { error: "Not Found" }));
 });
+
+setInterval(() => {
+  runBackgroundJobs();
+}, 30_000).unref();
 
 const port = Number(process.env.PORT ?? 3001);
 server.listen(port, () => {
