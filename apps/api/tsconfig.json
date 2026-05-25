@@ -2,8 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
-    "rootDir": "src",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "rootDir": "../..",
     "outDir": "dist"
   },
-  "include": ["src"]
+  "include": ["src", "../../packages/shared/src"]
 }

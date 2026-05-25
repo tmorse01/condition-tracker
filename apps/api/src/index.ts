@@ -3,6 +3,7 @@ import { json, parseJsonBody, parseMultipartFields, readBody, send } from "./lib
 import {
   getAuditLogForDocument,
   getAuditLogForLoan,
+  getConditionDetail,
   getConditions,
   getDocument,
   getDocumentVersion,
@@ -10,6 +11,7 @@ import {
   getDocuments,
   getLoanBundle,
   getLoans,
+  reviewLatestConditionVersion,
   uploadDocument,
   reviewVersion,
   validateSession,
@@ -52,6 +54,21 @@ const server = createServer(async (req, res) => {
     return send(res, json(200, { data: { id: conditionPatchMatch[1], ...body } }));
   }
 
+  if (conditionPatchMatch && method === "GET") {
+    const detail = getConditionDetail(conditionPatchMatch[1]);
+    if (!detail) return send(res, json(404, { error: "Condition not found" }));
+    return send(res, json(200, { data: detail }));
+  }
+
+  const conditionReviewMatch = url.pathname.match(/^\/api\/conditions\/([^/]+)\/review$/);
+  if (conditionReviewMatch && method === "POST") {
+    const body = await parseJsonBody(req);
+    if (!body?.action) return send(res, json(400, { error: "action is required" }));
+    const result = reviewLatestConditionVersion(conditionReviewMatch[1], body.action, body.notes, body.reviewerName ?? "Internal User");
+    if (!result.ok) return send(res, json(result.status, { error: result.message }));
+    return send(res, json(200, { data: { conditionId: conditionReviewMatch[1], reviewStatus: body.action } }));
+  }
+
   const sessionsMatch = url.pathname.match(/^\/api\/loans\/([^/]+)\/upload-sessions$/);
   if (sessionsMatch && method === "POST") {
     return send(res, json(201, { data: { loanId: sessionsMatch[1], status: "Active", created: true } }));
@@ -65,7 +82,8 @@ const server = createServer(async (req, res) => {
 
   const uploadMatch = url.pathname.match(/^\/api\/upload-sessions\/([^/]+)\/documents$/);
   if (uploadMatch && method === "POST") {
-    const contentType = req.headers["content-type"] ?? "";
+    const contentTypeHeader = req.headers["content-type"];
+    const contentType = Array.isArray(contentTypeHeader) ? contentTypeHeader[0] ?? "" : contentTypeHeader ?? "";
     if (!contentType.includes("multipart/form-data")) {
       return send(res, json(400, { error: "multipart/form-data required" }));
     }
@@ -140,14 +158,17 @@ const server = createServer(async (req, res) => {
 
   const versionApproveMatch = url.pathname.match(/^\/api\/document-versions\/([^/]+)\/approve$/);
   if (versionApproveMatch && method === "POST") {
-    const result = reviewVersion(versionApproveMatch[1], "Approved");
+    const body = await parseJsonBody(req);
+    const result = reviewVersion(versionApproveMatch[1], "Approved", body.reviewerName ?? "Internal User", body.notes);
     if (!result.ok) return send(res, json(result.status, { error: result.message }));
     return send(res, json(200, { data: { versionId: versionApproveMatch[1], reviewStatus: "Approved" } }));
   }
 
   const versionRejectMatch = url.pathname.match(/^\/api\/document-versions\/([^/]+)\/reject$/);
   if (versionRejectMatch && method === "POST") {
-    const result = reviewVersion(versionRejectMatch[1], "Rejected");
+    const body = await parseJsonBody(req);
+    if (!body?.notes?.trim()) return send(res, json(400, { error: "Rejection notes are required" }));
+    const result = reviewVersion(versionRejectMatch[1], "Rejected", body.reviewerName ?? "Internal User", body.notes);
     if (!result.ok) return send(res, json(result.status, { error: result.message }));
     return send(res, json(200, { data: { versionId: versionRejectMatch[1], reviewStatus: "Rejected" } }));
   }

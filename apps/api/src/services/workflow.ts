@@ -1,6 +1,8 @@
-import type { AuditLogEntry, Document, DocumentVersion } from "@condition-tracker/shared";
-import { storageKeyForVersion } from "../../../../packages/db/src/schema/storage-key.js";
+import type { AuditLogEntry, Document, DocumentVersion, Notification } from "@condition-tracker/shared";
 import { state } from "../data.js";
+
+const storageKeyForVersion = (loanId: string, documentId: string, versionId: string, fileName: string) =>
+  `loans/${loanId}/documents/${documentId}/versions/${versionId}/${fileName}`;
 
 const now = () => new Date().toISOString();
 
@@ -8,6 +10,19 @@ const newId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(
 
 const pushAudit = (entry: Omit<AuditLogEntry, "id" | "createdAt">) => {
   state.auditLog.unshift({ id: newId("audit"), createdAt: now(), ...entry });
+};
+
+const pushNotification = (entry: Omit<Notification, "id" | "createdAt" | "attemptCount" | "status" | "sentAt">) => {
+  const notification: Notification = {
+    id: newId("notif"),
+    createdAt: now(),
+    attemptCount: 1,
+    status: "Sent",
+    sentAt: now(),
+    ...entry,
+  };
+  state.notifications.unshift(notification);
+  return notification;
 };
 
 export const getLoans = () => structuredClone(state.loans);
@@ -40,6 +55,38 @@ export const getDocumentVersions = (documentId: string) =>
 export const getAuditLogForLoan = (loanId: string) => structuredClone(state.auditLog.filter((item) => item.loanId === loanId));
 export const getAuditLogForDocument = (documentId: string) => structuredClone(state.auditLog.filter((item) => item.documentId === documentId));
 export const getSession = (sessionId: string) => structuredClone(state.uploadSessions.find((item) => item.id === sessionId) ?? null);
+
+export const getConditionDetail = (conditionId: string) => {
+  const condition = state.conditions.find((item) => item.id === conditionId);
+  if (!condition) return null;
+  const loan = state.loans.find((item) => item.id === condition.loanId) ?? null;
+  const conditionLinks = state.conditionDocuments.filter((item) => item.conditionId === conditionId);
+  const documents = state.documents
+    .filter((item) => conditionLinks.some((link) => link.documentId === item.id))
+    .map((document) => {
+      const versions = state.documentVersions
+        .filter((version) => version.documentId === document.id)
+        .sort((a, b) => b.versionNumber - a.versionNumber);
+      return {
+        ...document,
+        versions,
+        latestVersion: versions[0] ?? null,
+      };
+    });
+  const latestDocument = documents[0] ?? null;
+  const latestVersion = latestDocument?.latestVersion ?? null;
+
+  return structuredClone({
+    condition,
+    loan,
+    latestDocument,
+    latestVersion,
+    documents,
+    versionHistory: latestDocument?.versions ?? [],
+    notifications: state.notifications.filter((item) => item.payloadJson.includes(`"${conditionId}"`)),
+    auditLog: state.auditLog.filter((item) => item.conditionId === conditionId || item.documentVersionId === latestVersion?.id),
+  });
+};
 
 export const validateSession = (sessionId: string, token?: string) => {
   const session = state.uploadSessions.find((item) => item.id === sessionId);
@@ -155,34 +202,80 @@ export const uploadDocument = (params: {
   };
 };
 
-export const reviewVersion = (versionId: string, outcome: "Approved" | "Rejected", reviewerName = "Internal User") => {
-  const version = state.documentVersions.find((item) => item.id === versionId);
-  if (!version) return { ok: false as const, status: 404, message: "Document version not found" };
+const reviewConditionVersion = (
+  conditionId: string,
+  outcome: "Approved" | "Rejected",
+  notes: string | undefined,
+  reviewerName = "Internal User",
+) => {
+  const condition = state.conditions.find((item) => item.id === conditionId);
+  if (!condition) return { ok: false as const, status: 404, message: "Condition not found" };
+  const link = state.conditionDocuments
+    .filter((item) => item.conditionId === conditionId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  if (!link) return { ok: false as const, status: 404, message: "Condition is not linked to a document" };
+  const version = state.documentVersions.find((item) => item.id === link.documentVersionId);
+  if (!version) return { ok: false as const, status: 404, message: "Latest document version not found" };
+  if (version.reviewStatus !== "Pending") return { ok: false as const, status: 400, message: "Version already reviewed" };
+  if (outcome === "Rejected" && !notes?.trim()) return { ok: false as const, status: 400, message: "Rejection notes are required" };
 
   version.reviewStatus = outcome;
+  version.reviewNotes = outcome === "Rejected" ? notes!.trim() : notes?.trim() ?? version.reviewNotes;
   version.reviewedBy = reviewerName;
   version.reviewedAt = now();
 
+  condition.status = outcome === "Approved" ? "Satisfied" : "NeedsMoreInfo";
+  condition.updatedAt = now();
+
   const document = state.documents.find((item) => item.id === version.documentId);
   if (!document) return { ok: false as const, status: 404, message: "Document not found" };
-
-  const linkedConditions = state.conditionDocuments.filter((item) => item.documentVersionId === version.id);
-  for (const link of linkedConditions) {
-    const condition = state.conditions.find((item) => item.id === link.conditionId);
-    if (condition) condition.status = outcome === "Approved" ? "Satisfied" : "NeedsMoreInfo";
-  }
+  document.updatedAt = now();
+  document.currentVersionId = version.id;
 
   pushAudit({
-    loanId: document.loanId,
-    conditionId: linkedConditions[0]?.conditionId ?? null,
+    loanId: condition.loanId,
+    conditionId,
     documentId: document.id,
     documentVersionId: version.id,
     actorType: "InternalUser",
     actorName: reviewerName,
     action: outcome === "Approved" ? "DocumentApproved" : "DocumentRejected",
     message: `${outcome} ${document.title}`,
-    metadataJson: JSON.stringify({ versionId: version.id, outcome }),
+    metadataJson: JSON.stringify({ versionId: version.id, outcome, notes: version.reviewNotes }),
   });
 
-  return { ok: true as const, document, version: structuredClone(version) };
+  pushNotification({
+    recipient: "Borrower",
+    templateKey: outcome === "Approved" ? "document-approved" : "document-rejected",
+    payloadJson: JSON.stringify({
+      conditionId,
+      documentId: document.id,
+      versionId: version.id,
+      outcome,
+      notes: version.reviewNotes,
+    }),
+  });
+
+  return {
+    ok: true as const,
+    condition: structuredClone(condition),
+    document: structuredClone(document),
+    version: structuredClone(version),
+  };
 };
+
+export const reviewVersion = (
+  versionId: string,
+  outcome: "Approved" | "Rejected",
+  reviewerName = "Internal User",
+  notes?: string,
+) => {
+  const version = state.documentVersions.find((item) => item.id === versionId);
+  if (!version) return { ok: false as const, status: 404, message: "Document version not found" };
+  const linkedCondition = state.conditionDocuments.find((item) => item.documentVersionId === version.id);
+  if (!linkedCondition) return { ok: false as const, status: 404, message: "Condition link not found" };
+  return reviewConditionVersion(linkedCondition.conditionId, outcome, notes, reviewerName);
+};
+
+export const reviewLatestConditionVersion = (conditionId: string, outcome: "Approved" | "Rejected", notes?: string, reviewerName = "Internal User") =>
+  reviewConditionVersion(conditionId, outcome, notes, reviewerName);

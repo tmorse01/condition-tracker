@@ -10,16 +10,19 @@ export const send = async (res: import("node:http").ServerResponse, response: Re
 };
 
 export const parseJsonBody = async (req: import("node:http").IncomingMessage) => {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(Buffer.from(chunk));
-  const raw = Buffer.concat(chunks).toString("utf8");
+  let raw = "";
+  const decoder = new TextDecoder();
+  for await (const chunk of req) raw += decoder.decode(chunk, { stream: true });
+  raw += decoder.decode();
   return raw ? JSON.parse(raw) : {};
 };
 
 export const readBody = async (req: import("node:http").IncomingMessage) => {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(Buffer.from(chunk));
-  return Buffer.concat(chunks).toString("utf8");
+  let raw = "";
+  const decoder = new TextDecoder();
+  for await (const chunk of req) raw += decoder.decode(chunk, { stream: true });
+  raw += decoder.decode();
+  return raw;
 };
 
 export const parseMultipartFields = (rawBody: string, contentType: string) => {
