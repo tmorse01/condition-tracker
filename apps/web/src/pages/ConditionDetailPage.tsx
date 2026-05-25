@@ -1,4 +1,4 @@
-import { Button, Card, Container, Group, Loader, Stack, Text, Textarea, Title } from "@mantine/core";
+import { Alert, Button, Card, Container, Group, Loader, Stack, Text, Textarea, Title } from "@mantine/core";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,21 +41,35 @@ export function ConditionDetailPage() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="md">
-        <Group justify="space-between">
+        <Group justify="space-between" align="end">
           <div>
+            <Text size="sm" c="dimmed" tt="uppercase" fw={700}>
+              Condition review
+            </Text>
             <Title order={2}>{data.condition.title}</Title>
             <Text c="dimmed">{data.condition.description}</Text>
-            <Text size="sm" c="dimmed" mt="xs">Loan {data.loan?.loanNumber ?? data.condition.loanId}</Text>
+            <Text size="sm" c="dimmed" mt="xs">
+              Loan {data.loan?.loanNumber ?? data.condition.loanId}
+            </Text>
           </div>
           <Button component={Link} to={`/loans/${data.condition.loanId}`} variant="default">
             Back to loan
           </Button>
         </Group>
-        <Card withBorder radius="md" p="lg">
+
+        <Alert color="lime" variant="light" title="Review summary">
+          {data.latestVersion
+            ? `The latest upload is version ${data.latestVersion.versionNumber} and is currently ${data.latestVersion.reviewStatus.toLowerCase()}.`
+            : "No linked version is available for review yet."}
+        </Alert>
+
+        <Card withBorder radius="lg" p="lg">
           <Group justify="space-between" align="start">
             <div>
               <Title order={4}>Latest review</Title>
-              <Text size="sm" c="dimmed">{data.latestDocument?.title ?? "No linked document"}</Text>
+              <Text size="sm" c="dimmed">
+                {data.latestDocument?.title ?? "No linked document"}
+              </Text>
             </div>
             <StatusBadge status={data.condition.status} />
           </Group>
@@ -68,10 +82,18 @@ export function ConditionDetailPage() {
               <Text size="sm">Review notes: {data.latestVersion.reviewNotes ?? "None"}</Text>
             </Stack>
           ) : (
-            <Text size="sm" c="dimmed" mt="md">No document version available.</Text>
+            <Text size="sm" c="dimmed" mt="md">
+              No document version available.
+            </Text>
           )}
           <Stack mt="md">
-            <Textarea label="Rejection notes" value={rejectionNotes} onChange={(event) => setRejectionNotes(event.currentTarget.value)} placeholder="Required if rejecting" />
+            <Textarea
+              label="Rejection notes"
+              value={rejectionNotes}
+              onChange={(event) => setRejectionNotes(event.currentTarget.value)}
+              placeholder="Required if rejecting"
+              minRows={3}
+            />
             <Group>
               <Button onClick={() => review("Approved")} loading={mutation.isPending} disabled={!data.latestVersion || data.latestVersion.reviewStatus !== "Pending"}>
                 Approve

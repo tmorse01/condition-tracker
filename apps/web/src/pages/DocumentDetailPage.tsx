@@ -1,4 +1,4 @@
-import { Button, Card, Container, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { Badge, Button, Card, Container, Group, Loader, Stack, Text, Title } from "@mantine/core";
 import { Link, useParams } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge";
 import { useDocumentQuery } from "../hooks/queries";
@@ -16,8 +16,11 @@ export function DocumentDetailPage() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="md">
-        <Group justify="space-between">
+        <Group justify="space-between" align="end">
           <div>
+            <Badge variant="light" color="lime" mb="xs">
+              Document detail
+            </Badge>
             <Title order={2}>{document.title}</Title>
             <Text c="dimmed">Document detail and version history.</Text>
           </div>
@@ -26,7 +29,8 @@ export function DocumentDetailPage() {
             <Button component={Link} to="/loans" variant="subtle">Loans</Button>
           </Group>
         </Group>
-        <Card withBorder radius="md" p="lg">
+
+        <Card withBorder radius="lg" p="lg">
           <Group justify="space-between" align="start">
             <div>
               <Title order={4}>Current version</Title>
@@ -45,11 +49,12 @@ export function DocumentDetailPage() {
             </Stack>
           ) : null}
         </Card>
-        <Card withBorder radius="md" p="lg">
+
+        <Card withBorder radius="lg" p="lg">
           <Title order={4}>Version history</Title>
           <Stack mt="md" gap="sm">
             {versions.map((version) => (
-              <Card key={version.id} withBorder>
+              <Card key={version.id} withBorder radius="md" p="md">
                 <Group justify="space-between" align="start">
                   <div>
                     <Text fw={600}>Version {version.versionNumber}</Text>
@@ -63,17 +68,22 @@ export function DocumentDetailPage() {
             ))}
           </Stack>
         </Card>
-        <Card withBorder radius="md" p="lg">
+
+        <Card withBorder radius="lg" p="lg">
           <Title order={4}>Review history</Title>
           <Stack mt="md" gap="xs">
             {auditLog.map((entry) => (
-              <Text key={entry.id} size="sm">
-                {entry.action} - {entry.message}
-              </Text>
+              <Card key={entry.id} withBorder radius="md" p="sm">
+                <Text size="xs" c="dimmed">
+                  {entry.action}
+                </Text>
+                <Text size="sm">{entry.message}</Text>
+              </Card>
             ))}
           </Stack>
         </Card>
-        <Card withBorder radius="md" p="lg">
+
+        <Card withBorder radius="lg" p="lg">
           <Title order={4}>Associated conditions</Title>
           <Stack mt="md" gap="sm">
             {associatedConditions.map((condition) => (

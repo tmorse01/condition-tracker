@@ -1,4 +1,4 @@
-import { Button, Card, Container, Group, Loader, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { Badge, Button, Card, Container, Group, Loader, Paper, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
 import { useQueries } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge";
@@ -34,26 +34,69 @@ export function DashboardPage() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <Card withBorder radius="md" p="lg">
-          <Group justify="space-between" align="start">
-            <div>
-              <Title order={1}>Condition Tracker</Title>
-              <Text c="dimmed" mt="xs">
-                Lightweight construction-loan document workflow platform.
+        <Paper
+          withBorder
+          radius="xl"
+          p="xl"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(17, 24, 39, 0.96) 0%, rgba(31, 41, 55, 0.94) 48%, rgba(34, 102, 63, 0.94) 100%)",
+            color: "white",
+            boxShadow: "0 24px 70px rgba(15, 23, 42, 0.18)",
+          }}
+        >
+          <Group justify="space-between" align="start" wrap="wrap">
+            <Stack gap="sm" maw={660}>
+              <Badge variant="light" color="lime" size="lg">
+                Construction-loan workflow OS
+              </Badge>
+              <Title order={1} c="white">
+                ConditionFlow keeps uploads, reviews, and approvals moving.
+              </Title>
+              <Text c="rgba(255,255,255,0.78)" size="lg">
+                Secure borrower uploads, clean internal review, and full condition history in one operational workspace.
               </Text>
-            </div>
-            <Button component={Link} to="/loans">
-              View loans
-            </Button>
+              <Group gap="xs">
+                <Button component={Link} to="/loans" size="md" color="lime">
+                  Open review queue
+                </Button>
+                <Button component={Link} to="/upload/session_2?token=token_2" size="md" variant="white" color="dark">
+                  Demo upload link
+                </Button>
+              </Group>
+            </Stack>
+            <Card radius="lg" p="lg" withBorder style={{ minWidth: 260, background: "rgba(255,255,255,0.08)", color: "white" }}>
+              <Text size="sm" c="rgba(255,255,255,0.72)">
+                Demo snapshot
+              </Text>
+              <Stack mt="md" gap="sm">
+                <Group justify="space-between">
+                  <Text size="sm">Open loans</Text>
+                  <Text fw={700}>{loansQuery.data?.length ?? 0}</Text>
+                </Group>
+                <Group justify="space-between">
+                  <Text size="sm">Pending reviews</Text>
+                  <Text fw={700}>{pendingReviews.length}</Text>
+                </Group>
+                <Group justify="space-between">
+                  <Text size="sm">Recent uploads</Text>
+                  <Text fw={700}>{recentUploads.length}</Text>
+                </Group>
+              </Stack>
+            </Card>
           </Group>
-          {loansQuery.isLoading ? <Loader mt="md" /> : null}
-        </Card>
+          {loansQuery.isLoading ? <Loader mt="md" color="lime" /> : null}
+        </Paper>
+
         <SimpleGrid cols={{ base: 1, md: 3 }}>
           <Card withBorder radius="md" p="lg">
-            <Title order={4}>Recent loans</Title>
+            <Group justify="space-between" align="center">
+              <Title order={4}>Recent loans</Title>
+              <Badge variant="light">Queue</Badge>
+            </Group>
             <Stack mt="md" gap="xs">
               {(loansQuery.data ?? []).slice(0, 3).map((loan) => (
-                <Group key={loan.id} justify="space-between">
+                <Group key={loan.id} justify="space-between" align="center">
                   <div>
                     <Text fw={600}>{loan.loanNumber}</Text>
                     <Text size="sm" c="dimmed">
@@ -66,28 +109,43 @@ export function DashboardPage() {
             </Stack>
           </Card>
           <Card withBorder radius="md" p="lg">
-            <Title order={4}>Pending reviews</Title>
+            <Group justify="space-between" align="center">
+              <Title order={4}>Pending reviews</Title>
+              <Badge variant="light" color="yellow">
+                Action needed
+              </Badge>
+            </Group>
             <Stack mt="md" gap="xs">
               {pendingReviews.map((condition) => (
-                <Group key={condition.id} justify="space-between">
+                <Group key={condition.id} justify="space-between" align="center">
                   <div>
                     <Text fw={600}>{condition.title}</Text>
                     <Text size="sm" c="dimmed">
                       Loan {condition.loanNumber}
                     </Text>
                   </div>
-                  <Button component={Link} to={`/conditions/${condition.id}`} variant="subtle">
+                  <Button component={Link} to={`/conditions/${condition.id}`} variant="light">
                     Open
                   </Button>
                 </Group>
               ))}
+              {!pendingReviews.length ? (
+                <Text size="sm" c="dimmed">
+                  No conditions waiting on review right now.
+                </Text>
+              ) : null}
             </Stack>
           </Card>
           <Card withBorder radius="md" p="lg">
-            <Title order={4}>Recent uploads</Title>
+            <Group justify="space-between" align="center">
+              <Title order={4}>Recent uploads</Title>
+              <Badge variant="light" color="green">
+                Activity
+              </Badge>
+            </Group>
             <Stack mt="md" gap="xs">
               {recentUploads.map((version) => (
-                <Group key={version.id} justify="space-between">
+                <Group key={version.id} justify="space-between" align="center">
                   <div>
                     <Text fw={600}>{version.fileName}</Text>
                     <Text size="sm" c="dimmed">
@@ -100,6 +158,7 @@ export function DashboardPage() {
             </Stack>
           </Card>
         </SimpleGrid>
+
         <Card withBorder radius="md" p="lg">
           <Group justify="space-between">
             <Title order={4}>Loans</Title>
@@ -107,7 +166,7 @@ export function DashboardPage() {
               Open list
             </Button>
           </Group>
-          <Table mt="md">
+          <Table mt="md" highlightOnHover verticalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Loan</Table.Th>
@@ -121,7 +180,9 @@ export function DashboardPage() {
                 <Table.Tr key={loan.id}>
                   <Table.Td>{loan.loanNumber}</Table.Td>
                   <Table.Td>{loan.borrowerName}</Table.Td>
-                  <Table.Td><StatusBadge status={loan.status} /></Table.Td>
+                  <Table.Td>
+                    <StatusBadge status={loan.status} />
+                  </Table.Td>
                   <Table.Td>
                     <Button component={Link} to={`/loans/${loan.id}`} variant="subtle">
                       Open
@@ -131,11 +192,6 @@ export function DashboardPage() {
               ))}
             </Table.Tbody>
           </Table>
-          <Group mt="md">
-            <Button component={Link} to="/upload/session_2?token=token_2" variant="default">
-              Demo upload link
-            </Button>
-          </Group>
         </Card>
       </Stack>
     </Container>

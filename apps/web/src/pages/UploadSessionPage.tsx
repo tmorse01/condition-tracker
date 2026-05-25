@@ -1,4 +1,4 @@
-import { Button, Card, Container, Group, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Badge, Button, Card, Container, Group, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
@@ -47,21 +47,37 @@ export function UploadSessionPage() {
   return (
     <Container size="sm" py="xl">
       <Stack gap="md">
-        <Card withBorder radius="md" p="lg">
+        <Card withBorder radius="xl" p="lg">
           <Group justify="space-between" align="start">
             <div>
+              <Badge variant="light" color="lime" mb="xs">
+                Secure borrower link
+              </Badge>
               <Title order={2}>Borrower Upload</Title>
-              <Text c="dimmed" mt="xs">Secure upload link validation and document submission flow.</Text>
+              <Text c="dimmed" mt="xs">
+                Secure upload link validation and document submission flow.
+              </Text>
             </div>
-            <Button component={Link} to="/loans" variant="default">Loans</Button>
+            <Button component={Link} to="/loans" variant="default">
+              Loans
+            </Button>
           </Group>
           <StatusBadge status={state} />
           {data?.session ? <Text size="sm" mt="sm" c="dimmed">Loan {data.session.loanId}</Text> : null}
+          {!isReady && data?.reason ? (
+            <Alert mt="md" color="red" variant="light" title="Upload unavailable">
+              {data.reason}
+            </Alert>
+          ) : null}
           <Stack mt="md">
             <TextInput label="Condition ID" value={conditionId} onChange={(event) => setConditionId(event.currentTarget.value)} disabled={!isReady} />
             <TextInput label="Document Title" value={title} onChange={(event) => setTitle(event.currentTarget.value)} disabled={!isReady} />
             <TextInput label="File name" value={fileName} onChange={(event) => setFileName(event.currentTarget.value)} disabled={!isReady} />
-            {validConditions.length ? <Text size="sm" c="dimmed">Available conditions: {validConditions.map((condition) => condition.id).join(", ")}</Text> : null}
+            {validConditions.length ? (
+              <Text size="sm" c="dimmed">
+                Available conditions: {validConditions.map((condition) => condition.id).join(", ")}
+              </Text>
+            ) : null}
             <Button
               onClick={async () => {
                 setMessage("");
