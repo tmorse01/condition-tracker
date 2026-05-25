@@ -1,6 +1,7 @@
 import type {
   AuditLogEntry,
   Condition,
+  ConditionDocument,
   Document,
   DocumentVersion,
   Loan,
@@ -80,6 +81,25 @@ export const demoDocuments: Document[] = [
     currentVersionId: "ver_2",
     createdAt: "2026-05-23T18:20:00.000Z",
     updatedAt: "2026-05-24T14:45:00.000Z",
+  },
+];
+
+export const demoConditionDocuments: ConditionDocument[] = [
+  {
+    id: "cond_doc_1",
+    conditionId: "cond_1",
+    documentId: "doc_1",
+    documentVersionId: "ver_1",
+    status: "Linked",
+    createdAt: "2026-05-24T14:32:00.000Z",
+  },
+  {
+    id: "cond_doc_2",
+    conditionId: "cond_2",
+    documentId: "doc_2",
+    documentVersionId: "ver_2",
+    status: "Linked",
+    createdAt: "2026-05-24T14:45:00.000Z",
   },
 ];
 

@@ -42,6 +42,15 @@ export interface Document {
   updatedAt: string;
 }
 
+export interface ConditionDocument {
+  id: string;
+  conditionId: string;
+  documentId: string;
+  documentVersionId: string;
+  status: string;
+  createdAt: string;
+}
+
 export interface DocumentVersion {
   id: string;
   documentId: string;
