@@ -8,6 +8,7 @@ import {
   demoUploadSessions,
   demoVersions,
 } from "@condition-tracker/shared/demo-data";
+import type { DocumentVersion } from "@condition-tracker/shared";
 import { storageKeyForVersion } from "../schema/storage-key.js";
 
 export const demoSeed = {
@@ -15,9 +16,14 @@ export const demoSeed = {
   conditions: demoConditions,
   documents: demoDocuments,
   conditionDocuments: demoConditionDocuments,
-  documentVersions: demoVersions.map((version) => ({
+  documentVersions: demoVersions.map((version: DocumentVersion) => ({
     ...version,
-    storageKey: storageKeyForVersion("loan_1001", version.documentId, version.id, version.fileName),
+    storageKey: storageKeyForVersion(
+      "loan_1001",
+      version.documentId,
+      version.id,
+      version.fileName,
+    ),
   })),
   uploadSessions: demoUploadSessions,
   auditLog: demoAuditLog,

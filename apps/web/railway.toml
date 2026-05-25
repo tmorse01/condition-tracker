@@ -1,6 +1,6 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm build"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @condition-tracker/web... build"
 
 [deploy]
 startCommand = "pnpm exec serve -s dist -l $PORT"

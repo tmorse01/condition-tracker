@@ -1,6 +1,6 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm build"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @condition-tracker/api... build"
 
 [deploy]
 startCommand = "node dist/apps/api/src/index.js"
