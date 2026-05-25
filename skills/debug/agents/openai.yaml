@@ -1,0 +1,3 @@
+display_name: Debug
+short_description: Investigate and fix workspace bugs
+default_prompt: Use this skill when you need to diagnose a bug, reproduce an issue, inspect logs or traces, identify the root cause, and make the smallest safe fix in the current workspace.

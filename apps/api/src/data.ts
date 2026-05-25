@@ -1,1 +1,3 @@
-export { demoSeed as data } from "@condition-tracker/db";
+import { demoSeed } from "../../../packages/db/src/index.js";
+
+export const state = structuredClone(demoSeed);

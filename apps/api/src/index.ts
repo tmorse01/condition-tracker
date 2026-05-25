@@ -10,6 +10,8 @@ import {
   getDocuments,
   getLoanBundle,
   getLoans,
+  uploadDocument,
+  reviewVersion,
   validateSession,
   validateUploadPayload,
 } from "./services/workflow.js";
@@ -57,8 +59,8 @@ const server = createServer(async (req, res) => {
 
   const validateMatch = url.pathname.match(/^\/api\/upload-sessions\/([^/]+)\/validate$/);
   if (validateMatch && method === "GET") {
-    const result = validateSession(validateMatch[1]);
-    return send(res, json(200, { data: { sessionId: validateMatch[1], valid: result.valid, session: result.session } }));
+    const result = validateSession(validateMatch[1], url.searchParams.get("token") ?? undefined);
+    return send(res, json(200, { data: { sessionId: validateMatch[1], valid: result.valid, reason: result.reason, session: result.session } }));
   }
 
   const uploadMatch = url.pathname.match(/^\/api\/upload-sessions\/([^/]+)\/documents$/);
@@ -74,13 +76,27 @@ const server = createServer(async (req, res) => {
     const conditionId = body.conditionId ?? "";
     const title = body.title ?? "";
     const fileName = body.file ?? body.fileName ?? "";
+    const fileSizeBytes = Number(body.fileSizeBytes ?? "0") || fileName.length;
 
     if (!token || !conditionId || !title || !fileName) {
       return send(res, json(400, { error: "token, conditionId, title, and file are required" }));
     }
 
-    const validation = validateUploadPayload(uploadMatch[1], conditionId);
+    const validation = validateUploadPayload(uploadMatch[1], conditionId, token);
     if (!validation.ok) return send(res, json(validation.status, { error: validation.message }));
+
+    const result = uploadDocument({
+      sessionId: uploadMatch[1],
+      token,
+      conditionId,
+      title,
+      fileName,
+      contentType: body.contentType ?? "application/octet-stream",
+      fileSizeBytes,
+      uploadedBy: "Borrower",
+    });
+
+    if (!result.ok) return send(res, json(400, { error: "Upload failed" }));
 
     return send(
       res,
@@ -90,6 +106,8 @@ const server = createServer(async (req, res) => {
           conditionId,
           title,
           fileName,
+          documentId: result.document.id,
+          versionId: result.version.id,
           accepted: true,
         },
       }),
@@ -122,11 +140,15 @@ const server = createServer(async (req, res) => {
 
   const versionApproveMatch = url.pathname.match(/^\/api\/document-versions\/([^/]+)\/approve$/);
   if (versionApproveMatch && method === "POST") {
+    const result = reviewVersion(versionApproveMatch[1], "Approved");
+    if (!result.ok) return send(res, json(result.status, { error: result.message }));
     return send(res, json(200, { data: { versionId: versionApproveMatch[1], reviewStatus: "Approved" } }));
   }
 
   const versionRejectMatch = url.pathname.match(/^\/api\/document-versions\/([^/]+)\/reject$/);
   if (versionRejectMatch && method === "POST") {
+    const result = reviewVersion(versionRejectMatch[1], "Rejected");
+    if (!result.ok) return send(res, json(result.status, { error: result.message }));
     return send(res, json(200, { data: { versionId: versionRejectMatch[1], reviewStatus: "Rejected" } }));
   }
 

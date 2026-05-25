@@ -3,9 +3,11 @@
   "compilerOptions": {
     "composite": true,
     "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "moduleResolution": "Bundler",
+    "module": "ESNext",
     "rootDir": "src",
-    "outDir": "dist",
-    "types": ["vite/client"]
+    "outDir": "dist"
   },
   "include": ["src"]
 }

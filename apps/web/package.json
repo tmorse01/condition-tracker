@@ -15,14 +15,16 @@
     "react-router-dom": "^7.6.2"
   },
   "devDependencies": {
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "tsx": "^4.19.4",
     "eslint": "^9.27.0"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --configLoader runner",
+    "build": "vite build --configLoader runner",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint ./src --ext .ts,.tsx"
   }
