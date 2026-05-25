@@ -1,0 +1,7 @@
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm build"
+
+[deploy]
+startCommand = "node dist/apps/api/src/index.js"
+healthcheckPath = "/health"

@@ -1,0 +1,7 @@
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm build"
+
+[deploy]
+startCommand = "pnpm exec serve -s dist -l $PORT"
+healthcheckPath = "/"
