@@ -5,6 +5,7 @@
   "type": "module",
   "main": "./src/index.ts",
   "dependencies": {
+    "@condition-tracker/db": "workspace:*",
     "@condition-tracker/shared": "workspace:*"
   },
   "scripts": {
