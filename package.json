@@ -11,16 +11,16 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @condition-tracker/api --filter @condition-tracker/web dev",
+    "start": "pnpm --filter @condition-tracker/api start",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
+    "test": "pnpm --filter @condition-tracker/api test",
     "db:migrate": "pnpm --filter @condition-tracker/db migrate",
     "db:seed": "pnpm --filter @condition-tracker/db seed",
     "deploy:preflight": "pnpm install --frozen-lockfile && pnpm build && pnpm typecheck && pnpm lint",
     "deploy:api": "railway up --service \"@condition-tracker/api\"",
-    "deploy:web": "railway up --service \"@condition-tracker/web\"",
-    "deploy:all": "pnpm deploy:preflight && pnpm deploy:api && pnpm deploy:web",
-    "deploy:logs:api": "railway logs --service \"@condition-tracker/api\"",
-    "deploy:logs:web": "railway logs --service \"@condition-tracker/web\""
+    "deploy:all": "pnpm deploy:preflight && pnpm deploy:api",
+    "deploy:logs:api": "railway logs --service \"@condition-tracker/api\""
   }
 }

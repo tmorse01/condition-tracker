@@ -1,3 +1,13 @@
+import type {
+  AuditLogEntry,
+  Condition,
+  ConditionDocument,
+  Document,
+  DocumentVersion,
+  Loan,
+  Notification,
+  UploadSession,
+} from "@condition-tracker/shared";
 import {
   demoAuditLog,
   demoConditions,
@@ -8,7 +18,6 @@ import {
   demoUploadSessions,
   demoVersions,
 } from "@condition-tracker/shared/demo-data";
-import type { AuditLogEntry, Condition, ConditionDocument, Document, DocumentVersion, Loan, Notification, UploadSession } from "@condition-tracker/shared";
 
 export type DemoState = {
   loans: Loan[];

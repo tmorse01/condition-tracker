@@ -1,7 +1,7 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @condition-tracker/web... build"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @condition-tracker/web build"
 
 [deploy]
-startCommand = "if [ -d dist ]; then pnpm exec serve -s dist -l $PORT; else pnpm exec serve -s apps/web/dist -l $PORT; fi"
+startCommand = "cd apps/web && npx serve -s dist -l $PORT"
 healthcheckPath = "/"

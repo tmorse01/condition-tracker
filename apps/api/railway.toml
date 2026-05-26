@@ -1,7 +1,7 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @condition-tracker/api... build"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @condition-tracker/web build && pnpm --filter @condition-tracker/api build"
 
 [deploy]
-startCommand = "if [ -f dist/apps/api/src/index.js ]; then node dist/apps/api/src/index.js; else node apps/api/dist/apps/api/src/index.js; fi"
-healthcheckPath = "/health"
+startCommand = "pnpm --filter @condition-tracker/api start"
+healthcheckPath = "/api/health"
