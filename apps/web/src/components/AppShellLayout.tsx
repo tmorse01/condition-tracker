@@ -10,7 +10,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       <div className="borrower-shell">
         <header className="borrower-header">
           <Group gap="sm">
-            <div className="brand-mark">CF</div>
+            <img className="brand-mark" src="/brand-icon.svg" alt="" aria-hidden />
             <div>
               <Text fw={700}>ConditionFlow</Text>
               <Text size="xs" c="dimmed">Secure document request</Text>
@@ -33,7 +33,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       <AppShell.Header>
         <Group h="100%" px={{ base: "md", sm: "lg" }} justify="space-between">
           <Group gap="sm">
-            <div className="brand-mark">CF</div>
+            <img className="brand-mark" src="/brand-icon.svg" alt="" aria-hidden />
             <Title order={3}>ConditionFlow</Title>
           </Group>
           <Group gap="sm">

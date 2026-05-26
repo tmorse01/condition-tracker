@@ -1,0 +1,6 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ConditionFlow">
+  <rect x="12" y="12" width="104" height="104" rx="28" fill="#4F46E5"/>
+  <path d="M40 44C40 40.6863 42.6863 38 46 38H66L82 54V84C82 87.3137 79.3137 90 76 90H46C42.6863 90 40 87.3137 40 84V44Z" stroke="white" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M66 38V54H82" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M49 67L57 75L72 60" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

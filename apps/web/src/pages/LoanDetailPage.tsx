@@ -30,7 +30,16 @@ export function LoanDetailPage() {
       <Stack gap="lg">
         <Group justify="space-between" align="start">
           <div>
-            <Button component={Link} to="/loans" variant="subtle" px={0} mb="sm" leftSection={<IconArrowLeft size={16} aria-hidden />}>Back to loans</Button>
+            <Button
+              component={Link}
+              to="/loans"
+              variant="subtle"
+              className="back-to-loans"
+              mb="sm"
+              leftSection={<IconArrowLeft size={16} aria-hidden />}
+            >
+              Back to loans
+            </Button>
             <Group gap="sm">
               <Title order={1}>{loan.loanNumber}</Title>
               <StatusBadge status={loan.status} />

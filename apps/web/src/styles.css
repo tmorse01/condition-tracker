@@ -24,16 +24,11 @@ body {
 }
 
 .brand-mark {
-  display: grid;
-  place-items: center;
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: #4f46e5;
-  color: white;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  object-fit: cover;
+  flex: 0 0 auto;
 }
 
 .nav-assignment {
@@ -48,6 +43,24 @@ body {
   max-width: 1220px;
   margin: 0 auto;
   padding: 30px 28px 42px;
+}
+
+.back-to-loans {
+  height: auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: #4f46e5;
+  transition: background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.back-to-loans:hover {
+  background: #eef2ff;
+  box-shadow: 0 0 0 1px #c7d2fe inset;
+}
+
+.back-to-loans[data-hovered="true"] {
+  background: #eef2ff;
 }
 
 .document-frame {
