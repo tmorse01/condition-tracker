@@ -1,6 +1,6 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @condition-tracker/web build && pnpm --filter @condition-tracker/api build"
+buildCommand = "pnpm install --frozen-lockfile && pnpm -r build"
 
 [deploy]
 startCommand = "pnpm --filter @condition-tracker/api start"

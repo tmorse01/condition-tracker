@@ -19,8 +19,8 @@
     "db:migrate": "pnpm --filter @condition-tracker/db migrate",
     "db:seed": "pnpm --filter @condition-tracker/db seed",
     "deploy:preflight": "pnpm install --frozen-lockfile && pnpm build && pnpm typecheck && pnpm lint",
-    "deploy:api": "railway up --service \"@condition-tracker/api\"",
+    "deploy:api": "railway up --detach",
     "deploy:all": "pnpm deploy:preflight && pnpm deploy:api",
-    "deploy:logs:api": "railway logs --service \"@condition-tracker/api\""
+    "deploy:logs:api": "railway logs"
   }
 }

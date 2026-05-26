@@ -17,7 +17,7 @@ import {
   demoNotifications,
   demoUploadSessions,
   demoVersions,
-} from "@condition-tracker/shared/demo-data";
+} from "../../../packages/shared/src/demo-data.js";
 
 export type DemoState = {
   loans: Loan[];
