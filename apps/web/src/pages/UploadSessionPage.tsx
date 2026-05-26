@@ -1,4 +1,5 @@
 import { Alert, Button, Card, Group, Loader, Select, Stack, Text, Title } from "@mantine/core";
+import { IconAlertCircle, IconCircleCheck, IconUpload } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -61,12 +62,12 @@ export function UploadSessionPage() {
           </Group>
 
           {state === "Complete" ? (
-            <Alert color="green" variant="light" title="Upload complete">
+            <Alert color="green" variant="light" title="Upload complete" icon={<IconCircleCheck size={20} aria-hidden />}>
               Your PDF has been delivered securely for review. No additional action is needed for this link.
             </Alert>
           ) : null}
           {!data?.valid && state !== "Complete" ? (
-            <Alert color="red" variant="light" title="This upload link is unavailable">
+            <Alert color="red" variant="light" title="This upload link is unavailable" icon={<IconAlertCircle size={20} aria-hidden />}>
               {data?.reason === "Expired Link" ? "This secure link has expired. Please request a new link from your loan contact." : "This link is invalid or no longer available."}
             </Alert>
           ) : null}
@@ -84,8 +85,8 @@ export function UploadSessionPage() {
               />
               {selectedCondition ? <Text size="sm" c="dimmed">{selectedCondition.description}</Text> : null}
               <PdfDropzone file={file} onChange={setFile} onError={setMessage} disabled={upload.isPending} />
-              {message ? <Alert color="red" variant="light">{message}</Alert> : null}
-              <Button size="md" onClick={() => upload.mutate()} loading={upload.isPending} disabled={!file || !selectedCondition}>
+              {message ? <Alert color="red" variant="light" icon={<IconAlertCircle size={20} aria-hidden />}>{message}</Alert> : null}
+              <Button size="md" leftSection={<IconUpload size={16} aria-hidden />} onClick={() => upload.mutate()} loading={upload.isPending} disabled={!file || !selectedCondition}>
                 Submit PDF securely
               </Button>
             </>

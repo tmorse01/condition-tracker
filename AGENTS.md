@@ -35,3 +35,8 @@ Definition of done:
 - Type checks/lint pass if applicable
 - Acceptance criteria satisfied
 - No unrelated modifications
+
+## Web App Development Component Library
+
+Using Mantine v8
+Documentation URL: https://mantine.dev/llms.txt

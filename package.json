@@ -10,7 +10,7 @@
     "typescript-eslint": "^8.46.2"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @condition-tracker/api --filter @condition-tracker/web dev",
+    "dev": "node ./scripts/dev.mjs",
     "start": "pnpm --filter @condition-tracker/api start",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",

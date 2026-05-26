@@ -1,4 +1,5 @@
 import { Alert, Button, Card, Grid, Group, Loader, Stack, Text, Textarea, Title } from "@mantine/core";
+import { IconAlertCircle, IconArrowLeft, IconCircleCheck, IconFileOff, IconHistory, IconX } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -36,19 +37,32 @@ export function ConditionDetailPage() {
       <Stack gap="lg">
         <Group justify="space-between" align="end">
           <div>
-            <Button component={Link} to={`/loans/${data.condition.loanId}`} variant="subtle" px={0} mb="sm">Back to loan</Button>
+            <Button component={Link} to={`/loans/${data.condition.loanId}`} variant="subtle" px={0} mb="sm" leftSection={<IconArrowLeft size={16} aria-hidden />}>Back to loan</Button>
             <Title order={1}>{data.condition.title}</Title>
             <Text c="dimmed">{data.condition.description}</Text>
           </div>
           <StatusBadge status={data.condition.status} />
         </Group>
-        {message ? <Alert color={message.includes("could not") ? "red" : "indigo"} variant="light">{message}</Alert> : null}
+        {message ? (
+          <Alert
+            color={message.includes("could not") ? "red" : "indigo"}
+            variant="light"
+            icon={message.includes("could not") ? <IconAlertCircle size={20} aria-hidden /> : <IconCircleCheck size={20} aria-hidden />}
+          >
+            {message}
+          </Alert>
+        ) : null}
         <Grid gutter="lg">
           <Grid.Col span={{ base: 12, lg: 8 }}>
             {data.latestVersion ? (
               <PdfPreview versionId={data.latestVersion.id} title={data.latestDocument?.title ?? data.condition.title} />
             ) : (
-              <Card withBorder p="xl"><Text c="dimmed">No submitted document is available for review.</Text></Card>
+              <Card withBorder p="xl">
+                <Group gap="xs">
+                  <IconFileOff size={20} color="var(--mantine-color-gray-6)" aria-hidden />
+                  <Text c="dimmed">No submitted document is available for review.</Text>
+                </Group>
+              </Card>
             )}
           </Grid.Col>
           <Grid.Col span={{ base: 12, lg: 4 }}>
@@ -74,10 +88,11 @@ export function ConditionDetailPage() {
                   disabled={!canReview}
                 />
                 <Group grow mt="lg">
-                  <Button onClick={() => mutation.mutate("Approved")} loading={mutation.isPending} disabled={!canReview}>Approve</Button>
+                  <Button leftSection={<IconCircleCheck size={16} aria-hidden />} onClick={() => mutation.mutate("Approved")} loading={mutation.isPending} disabled={!canReview}>Approve</Button>
                   <Button
                     color="red"
                     variant="light"
+                    leftSection={<IconX size={16} aria-hidden />}
                     onClick={() => mutation.mutate("Rejected")}
                     loading={mutation.isPending}
                     disabled={!canReview || !notes.trim()}
@@ -87,7 +102,10 @@ export function ConditionDetailPage() {
                 </Group>
               </Card>
               <Card withBorder radius="lg" p="lg">
-                <Title order={4}>Versions</Title>
+                <Group gap="xs">
+                  <IconHistory size={20} color="var(--mantine-color-indigo-6)" aria-hidden />
+                  <Title order={4}>Versions</Title>
+                </Group>
                 <Stack mt="md">
                   {data.versionHistory.map((version) => (
                     <div key={version.id}>

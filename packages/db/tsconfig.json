@@ -4,7 +4,8 @@
     "composite": true,
     "moduleResolution": "Bundler",
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "noEmit": false
   },
   "include": ["src"]
 }

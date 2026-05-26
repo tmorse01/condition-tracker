@@ -1,4 +1,5 @@
 import { Alert, Badge, Button, Card, CopyButton, Grid, Group, Loader, Paper, Stack, Tabs, Text, Title } from "@mantine/core";
+import { IconArrowLeft, IconCircleCheck, IconClipboardCheck, IconCopy, IconExternalLink, IconFileText, IconHistory, IconHome, IconLink } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { PdfThumbnail } from "../components/PdfPreview";
@@ -29,28 +30,28 @@ export function LoanDetailPage() {
       <Stack gap="lg">
         <Group justify="space-between" align="start">
           <div>
-            <Button component={Link} to="/loans" variant="subtle" px={0} mb="sm">Back to loans</Button>
+            <Button component={Link} to="/loans" variant="subtle" px={0} mb="sm" leftSection={<IconArrowLeft size={16} aria-hidden />}>Back to loans</Button>
             <Group gap="sm">
               <Title order={1}>{loan.loanNumber}</Title>
               <StatusBadge status={loan.status} />
             </Group>
             <Text c="dimmed">{loan.borrowerName} - {loan.propertyAddress}</Text>
           </div>
-          <Button onClick={() => sessionMutation.mutate()} loading={sessionMutation.isPending} disabled={!outstandingCount}>
+          <Button onClick={() => sessionMutation.mutate()} loading={sessionMutation.isPending} disabled={!outstandingCount} leftSection={<IconLink size={16} aria-hidden />}>
             Create upload link
           </Button>
         </Group>
 
         {sessionMutation.data ? (
-          <Alert color="indigo" variant="light" title="Secure borrower link created">
+          <Alert color="indigo" variant="light" title="Secure borrower link created" icon={<IconCircleCheck size={20} aria-hidden />}>
             <Stack gap="xs">
               <Text size="sm">Expires {new Date(sessionMutation.data.expiresAt).toLocaleString()}. One outstanding PDF may be submitted with this link.</Text>
               <Group>
                 <Text size="sm" ff="monospace" lineClamp={1}>{uploadLink}</Text>
                 <CopyButton value={uploadLink}>
-                  {({ copied, copy }) => <Button size="xs" variant="light" onClick={copy}>{copied ? "Copied" : "Copy link"}</Button>}
+                  {({ copied, copy }) => <Button size="xs" variant="light" leftSection={<IconCopy size={16} aria-hidden />} onClick={copy}>{copied ? "Copied" : "Copy link"}</Button>}
                 </CopyButton>
-                <Button component="a" href={sessionMutation.data.uploadUrl} target="_blank" size="xs" variant="subtle">Open</Button>
+                <Button component="a" href={sessionMutation.data.uploadUrl} target="_blank" size="xs" variant="subtle" rightSection={<IconExternalLink size={16} aria-hidden />}>Open</Button>
               </Group>
             </Stack>
           </Alert>
@@ -59,21 +60,30 @@ export function LoanDetailPage() {
         <Grid>
           <Grid.Col span={{ base: 12, sm: 4 }}>
             <Card withBorder radius="lg" p="lg">
-              <Text size="sm" c="dimmed">Tracked requirements</Text>
+              <Group justify="space-between" align="start">
+                <Text size="sm" c="dimmed">Tracked requirements</Text>
+                <IconClipboardCheck size={24} color="var(--mantine-color-indigo-6)" aria-hidden />
+              </Group>
               <Title order={2} mt="xs">{conditions.length}</Title>
               <Text size="sm" c="dimmed">{outstandingCount ? `${outstandingCount} awaiting upload` : "No uploads currently requested"}</Text>
             </Card>
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 4 }}>
             <Card withBorder radius="lg" p="lg">
-              <Text size="sm" c="dimmed">Pending decisions</Text>
+              <Group justify="space-between" align="start">
+                <Text size="sm" c="dimmed">Pending decisions</Text>
+                <IconCircleCheck size={24} color="var(--mantine-color-indigo-6)" aria-hidden />
+              </Group>
               <Title order={2} mt="xs">{pendingReviewCount}</Title>
               <Text size="sm" c="dimmed">Ready for reviewer action</Text>
             </Card>
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 4 }}>
             <Card withBorder radius="lg" p="lg">
-              <Text size="sm" c="dimmed">Documents</Text>
+              <Group justify="space-between" align="start">
+                <Text size="sm" c="dimmed">Documents</Text>
+                <IconFileText size={24} color="var(--mantine-color-indigo-6)" aria-hidden />
+              </Group>
               <Title order={2} mt="xs">{documents.length}</Title>
               <Text size="sm" c="dimmed">Versioned borrower files</Text>
             </Card>
@@ -83,10 +93,10 @@ export function LoanDetailPage() {
         <Paper withBorder radius="lg" p="lg">
           <Tabs defaultValue="conditions" color="indigo">
             <Tabs.List mb="lg">
-              <Tabs.Tab value="overview">Overview</Tabs.Tab>
-              <Tabs.Tab value="conditions">Conditions</Tabs.Tab>
-              <Tabs.Tab value="documents">Documents</Tabs.Tab>
-              <Tabs.Tab value="audit">Audit log</Tabs.Tab>
+              <Tabs.Tab value="overview" leftSection={<IconHome size={16} aria-hidden />}>Overview</Tabs.Tab>
+              <Tabs.Tab value="conditions" leftSection={<IconClipboardCheck size={16} aria-hidden />}>Conditions</Tabs.Tab>
+              <Tabs.Tab value="documents" leftSection={<IconFileText size={16} aria-hidden />}>Documents</Tabs.Tab>
+              <Tabs.Tab value="audit" leftSection={<IconHistory size={16} aria-hidden />}>Audit log</Tabs.Tab>
             </Tabs.List>
             <Tabs.Panel value="overview">
               <Grid>

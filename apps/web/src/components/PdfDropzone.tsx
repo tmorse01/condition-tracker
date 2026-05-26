@@ -1,4 +1,5 @@
 import { Button, Group, Paper, Stack, Text } from "@mantine/core";
+import { IconFileTypePdf, IconRefresh, IconTrash, IconUpload } from "@tabler/icons-react";
 import { useRef, useState } from "react";
 
 const maximumPdfBytes = 10 * 1024 * 1024;
@@ -59,12 +60,18 @@ export function PdfDropzone({
         onChange={(event) => acceptFile(event.currentTarget.files?.[0])}
       />
       <Stack align="center" gap="xs">
+        <IconFileTypePdf size={24} color="var(--mantine-color-indigo-6)" aria-hidden />
         <Text fw={600}>{file ? file.name : "Drag and drop your PDF here"}</Text>
         <Text size="sm" c="dimmed">
           {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB selected` : "One PDF document, up to 10 MB"}
         </Text>
         <Group>
-          <Button type="button" variant="light" disabled={disabled}>
+          <Button
+            type="button"
+            variant="light"
+            leftSection={file ? <IconRefresh size={16} aria-hidden /> : <IconUpload size={16} aria-hidden />}
+            disabled={disabled}
+          >
             {file ? "Replace file" : "Choose file"}
           </Button>
           {file ? (
@@ -72,6 +79,7 @@ export function PdfDropzone({
               type="button"
               variant="subtle"
               color="gray"
+              leftSection={<IconTrash size={16} aria-hidden />}
               onClick={(event) => {
                 event.stopPropagation();
                 onChange(null);

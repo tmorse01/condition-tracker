@@ -9,10 +9,6 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./dist/index.js"
-    },
-    "./demo-data": {
-      "types": "./src/demo-data.ts",
-      "default": "./dist/demo-data.js"
     }
   },
   "devDependencies": {

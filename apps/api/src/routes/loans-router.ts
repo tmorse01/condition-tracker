@@ -1,4 +1,5 @@
 import { Router, type Router as ExpressRouter } from "express";
+import { isUuid } from "../middleware/uuid-params.js";
 import {
   createUploadSession,
   getAuditLogForLoan,
@@ -11,28 +12,22 @@ import { asyncHandler } from "../middleware/async-handler.js";
 
 export const loansRouter: ExpressRouter = Router();
 
-loansRouter.get("/", (_req, res) => {
-  return res.status(200).json({ data: getLoans() });
-});
+loansRouter.get("/", asyncHandler(async (_req, res) => res.status(200).json({ data: await getLoans() })));
 
-loansRouter.get(
-  "/:loanId",
-  asyncHandler(async (req, res) => {
+loansRouter.get("/:loanId", asyncHandler(async (req, res) => {
+  const loanId = String(req.params.loanId);
+  if (!isUuid(loanId)) return res.status(404).json({ error: "Loan not found" });
+  const bundle = await getLoanBundle(loanId);
+  if (!bundle) return res.status(404).json({ error: "Loan not found" });
+  return res.status(200).json({ data: bundle });
+}));
+
+loansRouter.route("/:loanId/conditions")
+  .get(asyncHandler(async (req, res) => {
     const loanId = String(req.params.loanId);
-    const bundle = getLoanBundle(loanId);
-    if (!bundle) {
-      res.status(404).json({ error: "Loan not found" });
-      return;
-    }
-    res.status(200).json({ data: bundle });
-  }),
-);
-
-loansRouter
-  .route("/:loanId/conditions")
-  .get((req, res) => {
-    return res.status(200).json({ data: getConditions(String(req.params.loanId)) });
-  })
+    if (!isUuid(loanId)) return res.status(404).json({ error: "Loan not found" });
+    return res.status(200).json({ data: await getConditions(loanId) });
+  }))
   .post((req, res) => {
     const body = req.body as { title?: string; description?: string };
     if (!body?.title || !body?.description) {
@@ -43,21 +38,22 @@ loansRouter
     });
   });
 
-loansRouter.post(
-  "/:loanId/upload-sessions",
-  (req, res) => {
-    const session = createUploadSession(String(req.params.loanId));
-    if (!session) {
-      return res.status(404).json({ error: "Loan not found" });
-    }
-    return res.status(201).json({ data: session });
-  },
-);
+loansRouter.post("/:loanId/upload-sessions", asyncHandler(async (req, res) => {
+  const loanId = String(req.params.loanId);
+  if (!isUuid(loanId)) return res.status(404).json({ error: "Loan not found" });
+  const session = await createUploadSession(loanId);
+  if (!session) return res.status(404).json({ error: "Loan not found" });
+  return res.status(201).json({ data: session });
+}));
 
-loansRouter.get("/:loanId/documents", (req, res) => {
-  return res.status(200).json({ data: getDocuments(String(req.params.loanId)) });
-});
+loansRouter.get("/:loanId/documents", asyncHandler(async (req, res) => {
+  const loanId = String(req.params.loanId);
+  if (!isUuid(loanId)) return res.status(404).json({ error: "Loan not found" });
+  return res.status(200).json({ data: await getDocuments(loanId) });
+}));
 
-loansRouter.get("/:loanId/audit-log", (req, res) => {
-  return res.status(200).json({ data: getAuditLogForLoan(String(req.params.loanId)) });
-});
+loansRouter.get("/:loanId/audit-log", asyncHandler(async (req, res) => {
+  const loanId = String(req.params.loanId);
+  if (!isUuid(loanId)) return res.status(404).json({ error: "Loan not found" });
+  return res.status(200).json({ data: await getAuditLogForLoan(loanId) });
+}));

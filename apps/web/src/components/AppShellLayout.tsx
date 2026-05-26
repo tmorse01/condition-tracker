@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AppShell, Avatar, Badge, Button, Group, NavLink, Stack, Text, Title } from "@mantine/core";
+import { IconBuilding, IconClipboardCheck, IconFileText, IconHome, IconShieldLock } from "@tabler/icons-react";
 import { Link, useLocation } from "react-router-dom";
 
 export function AppShellLayout({ children }: { children: ReactNode }) {
@@ -15,7 +16,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               <Text size="xs" c="dimmed">Secure document request</Text>
             </div>
           </Group>
-          <Badge variant="light" color="indigo">Secure upload</Badge>
+          <Badge variant="light" color="indigo" leftSection={<IconShieldLock size={16} aria-hidden />}>Secure upload</Badge>
         </header>
         <main>{children}</main>
       </div>
@@ -36,8 +37,8 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
             <Title order={3}>ConditionFlow</Title>
           </Group>
           <Group gap="sm">
-            <Button component={Link} to="/" variant="subtle" hiddenFrom="sm">Home</Button>
-            <Button component={Link} to="/loans" variant="light" hiddenFrom="sm">Loans</Button>
+            <Button component={Link} to="/" variant="subtle" hiddenFrom="sm" leftSection={<IconHome size={16} aria-hidden />}>Home</Button>
+            <Button component={Link} to="/loans" variant="light" hiddenFrom="sm" leftSection={<IconBuilding size={16} aria-hidden />}>Loans</Button>
             <Badge variant="light" color="indigo" visibleFrom="sm">Internal workspace</Badge>
             <Avatar color="indigo" radius="xl" size="sm">AR</Avatar>
           </Group>
@@ -46,11 +47,11 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       <AppShell.Navbar p="md">
         <Stack gap="xs" h="100%">
           <Text size="xs" fw={700} c="dimmed" tt="uppercase" px="sm" mb="xs">Workspace</Text>
-          <NavLink component={Link} to="/" label="Home" active={location.pathname === "/"} />
-          <NavLink component={Link} to="/loans" label="Loans" active={location.pathname.startsWith("/loans")} />
+          <NavLink component={Link} to="/" label="Home" leftSection={<IconHome size={16} aria-hidden />} active={location.pathname === "/"} />
+          <NavLink component={Link} to="/loans" label="Loans" leftSection={<IconBuilding size={16} aria-hidden />} active={location.pathname.startsWith("/loans")} />
           <Text size="xs" fw={700} c="dimmed" tt="uppercase" px="sm" mt="lg" mb="xs">Review tools</Text>
-          <NavLink label="Pending review" description="Approvals waiting" active={location.pathname.startsWith("/conditions")} />
-          <NavLink label="Documents" description="Version history" active={location.pathname.startsWith("/documents")} />
+          <NavLink label="Pending review" description="Approvals waiting" leftSection={<IconClipboardCheck size={16} aria-hidden />} active={location.pathname.startsWith("/conditions")} />
+          <NavLink label="Documents" description="Version history" leftSection={<IconFileText size={16} aria-hidden />} active={location.pathname.startsWith("/documents")} />
           <div className="nav-assignment">
             <Text size="xs" c="dimmed">Assigned reviewer</Text>
             <Text fw={600} size="sm">Avery Reviewer</Text>

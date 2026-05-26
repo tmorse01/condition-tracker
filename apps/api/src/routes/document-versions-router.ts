@@ -1,5 +1,6 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { asyncHandler } from "../middleware/async-handler.js";
+import { isUuid } from "../middleware/uuid-params.js";
 import { getDocumentVersion, reviewVersion } from "../services/workflow.js";
 import { storageService } from "../services/storage.js";
 
@@ -9,7 +10,10 @@ documentVersionsRouter.get(
   "/:versionId/download",
   asyncHandler(async (req, res) => {
     const versionId = String(req.params.versionId);
-    const version = getDocumentVersion(versionId);
+    if (!isUuid(versionId)) {
+      return res.status(404).json({ error: "Document version not found" });
+    }
+    const version = await getDocumentVersion(versionId);
     if (!version) {
       res.status(404).json({ error: "Document version not found" });
       return;
@@ -29,7 +33,10 @@ documentVersionsRouter.get(
   "/:versionId/preview",
   asyncHandler(async (req, res) => {
     const versionId = String(req.params.versionId);
-    const version = getDocumentVersion(versionId);
+    if (!isUuid(versionId)) {
+      return res.status(404).json({ error: "Document version not found" });
+    }
+    const version = await getDocumentVersion(versionId);
     if (!version) {
       res.status(404).json({ error: "Document version not found" });
       return;
@@ -46,10 +53,11 @@ documentVersionsRouter.get(
   }),
 );
 
-documentVersionsRouter.post("/:versionId/approve", (req, res) => {
+documentVersionsRouter.post("/:versionId/approve", asyncHandler(async (req, res) => {
   const body = req.body as { reviewerName?: string; notes?: string };
   const versionId = String(req.params.versionId);
-  const result = reviewVersion(
+  if (!isUuid(versionId)) return res.status(404).json({ error: "Document version not found" });
+  const result = await reviewVersion(
     versionId,
     "Approved",
     body.reviewerName ?? "Internal User",
@@ -59,15 +67,16 @@ documentVersionsRouter.post("/:versionId/approve", (req, res) => {
   return res.status(200).json({
     data: { versionId, reviewStatus: "Approved" },
   });
-});
+}));
 
-documentVersionsRouter.post("/:versionId/reject", (req, res) => {
+documentVersionsRouter.post("/:versionId/reject", asyncHandler(async (req, res) => {
   const body = req.body as { reviewerName?: string; notes?: string };
   const versionId = String(req.params.versionId);
+  if (!isUuid(versionId)) return res.status(404).json({ error: "Document version not found" });
   if (!body?.notes?.trim()) {
     return res.status(400).json({ error: "Rejection notes are required" });
   }
-  const result = reviewVersion(
+  const result = await reviewVersion(
     versionId,
     "Rejected",
     body.reviewerName ?? "Internal User",
@@ -77,4 +86,4 @@ documentVersionsRouter.post("/:versionId/reject", (req, res) => {
   return res.status(200).json({
     data: { versionId, reviewStatus: "Rejected" },
   });
-});
+}));

@@ -1,4 +1,5 @@
 import { Alert, Badge, Button, Card, Checkbox, Group, Loader, Paper, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { IconActivity, IconArrowRight, IconBuilding, IconCircleCheck, IconClipboardCheck, IconInbox, IconUpload } from "@tabler/icons-react";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -66,22 +67,31 @@ export function DashboardPage() {
             <Title order={1} mt={4}>Document review workspace</Title>
             <Text c="dimmed">Review borrower submissions and keep construction-loan conditions moving.</Text>
           </div>
-          <Button component={Link} to="/loans">Browse loans</Button>
+          <Button component={Link} to="/loans" rightSection={<IconArrowRight size={16} aria-hidden />}>Browse loans</Button>
         </Group>
 
         <SimpleGrid cols={{ base: 1, sm: 3 }}>
           <Card withBorder radius="lg" p="lg">
-            <Text size="sm" c="dimmed">Active loans</Text>
+            <Group justify="space-between" align="start">
+              <Text size="sm" c="dimmed">Active loans</Text>
+              <IconBuilding size={24} color="var(--mantine-color-indigo-6)" aria-hidden />
+            </Group>
             <Title order={2} mt={6}>{loansQuery.data?.length ?? 0}</Title>
             <Text size="sm" c="dimmed">Open portfolio records</Text>
           </Card>
           <Card withBorder radius="lg" p="lg">
-            <Text size="sm" c="dimmed">Pending review</Text>
+            <Group justify="space-between" align="start">
+              <Text size="sm" c="dimmed">Pending review</Text>
+              <IconClipboardCheck size={24} color="var(--mantine-color-indigo-6)" aria-hidden />
+            </Group>
             <Title order={2} mt={6}>{pendingReviews.length}</Title>
             <Text size="sm" c="dimmed">Documents ready for decision</Text>
           </Card>
           <Card withBorder radius="lg" p="lg">
-            <Text size="sm" c="dimmed">Awaiting upload</Text>
+            <Group justify="space-between" align="start">
+              <Text size="sm" c="dimmed">Awaiting upload</Text>
+              <IconUpload size={24} color="var(--mantine-color-indigo-6)" aria-hidden />
+            </Group>
             <Title order={2} mt={6}>{outstandingUploads.length}</Title>
             <Text size="sm" c="dimmed">Requests outstanding</Text>
           </Card>
@@ -96,6 +106,7 @@ export function DashboardPage() {
             <Button
               disabled={!selected.length}
               loading={bulkApprove.isPending}
+              leftSection={<IconCircleCheck size={16} aria-hidden />}
               onClick={() => {
                 setMessage("");
                 bulkApprove.mutate(selected);
@@ -104,7 +115,7 @@ export function DashboardPage() {
               Approve selected ({selected.length})
             </Button>
           </Group>
-          {message ? <Alert color="indigo" variant="light" mb="md">{message}</Alert> : null}
+          {message ? <Alert color="indigo" variant="light" icon={<IconCircleCheck size={20} aria-hidden />} mb="md">{message}</Alert> : null}
           {loansQuery.isLoading ? <Loader /> : null}
           <Table highlightOnHover verticalSpacing="md">
             <Table.Thead>
@@ -147,14 +158,20 @@ export function DashboardPage() {
             </Table.Tbody>
           </Table>
           {!pendingReviews.length && !loansQuery.isLoading ? (
-            <Text size="sm" c="dimmed" ta="center" py="xl">There are no documents waiting for review.</Text>
+            <Stack align="center" gap="xs" py="xl">
+              <IconInbox size={24} color="var(--mantine-color-gray-5)" aria-hidden />
+              <Text size="sm" c="dimmed" ta="center">There are no documents waiting for review.</Text>
+            </Stack>
           ) : null}
         </Paper>
 
         <SimpleGrid cols={{ base: 1, md: 2 }}>
           <Card withBorder radius="lg" p="lg">
             <Group justify="space-between" mb="md">
-              <Title order={4}>Awaiting borrower upload</Title>
+              <Group gap="xs">
+                <IconUpload size={20} color="var(--mantine-color-indigo-6)" aria-hidden />
+                <Title order={4}>Awaiting borrower upload</Title>
+              </Group>
               <Badge color="indigo" variant="light">{outstandingUploads.length} open</Badge>
             </Group>
             <Stack gap="sm">
@@ -174,7 +191,10 @@ export function DashboardPage() {
             </Stack>
           </Card>
           <Card withBorder radius="lg" p="lg">
-            <Title order={4} mb="md">Recent activity</Title>
+            <Group gap="xs" mb="md">
+              <IconActivity size={20} color="var(--mantine-color-indigo-6)" aria-hidden />
+              <Title order={4}>Recent activity</Title>
+            </Group>
             <Stack gap="md">
               {activity.map((entry) => (
                 <div key={entry.id}>

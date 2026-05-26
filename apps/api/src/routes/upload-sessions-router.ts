@@ -1,5 +1,6 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { asyncHandler } from "../middleware/async-handler.js";
+import { isUuid } from "../middleware/uuid-params.js";
 import { parseMultipartFields, readBodyBytes } from "../lib/http.js";
 import {
   getUploadSessionContext,
@@ -11,13 +12,17 @@ const maximumPdfBytes = 10 * 1024 * 1024;
 
 export const uploadSessionsRouter: ExpressRouter = Router();
 
-uploadSessionsRouter.get("/:sessionId/validate", (req, res) => {
-  const result = getUploadSessionContext(
-    String(req.params.sessionId),
+uploadSessionsRouter.get("/:sessionId/validate", asyncHandler(async (req, res) => {
+  const sessionId = String(req.params.sessionId);
+  if (!isUuid(sessionId)) {
+    return res.status(200).json({ data: { sessionId, valid: false, reason: "Invalid Link", session: null, loan: null, eligibleConditions: [] } });
+  }
+  const result = await getUploadSessionContext(
+    sessionId,
     typeof req.query.token === "string" ? req.query.token : undefined,
   );
-  return res.status(200).json({ data: { sessionId: String(req.params.sessionId), ...result } });
-});
+  return res.status(200).json({ data: { sessionId, ...result } });
+}));
 
 uploadSessionsRouter.get("/upload-session-validate", (_req, res) => {
   return res.status(400).json({ error: "Use /api/upload-sessions/:sessionId/validate" });
@@ -58,12 +63,15 @@ uploadSessionsRouter.post(
     }
 
     const sessionId = String(req.params.sessionId);
-    const validation = validateUploadPayload(sessionId, conditionId, token);
+    if (!isUuid(sessionId)) {
+      return res.status(404).json({ error: "Upload session not found" });
+    }
+    const validation = await validateUploadPayload(sessionId, conditionId, token);
     if (!validation.ok) {
       return res.status(validation.status).json({ error: validation.message });
     }
 
-    const result = uploadDocument({
+    const result = await uploadDocument({
       sessionId,
       token,
       conditionId,
@@ -90,7 +98,3 @@ uploadSessionsRouter.post(
     });
   }),
 );
-
-uploadSessionsRouter.get("/upload-session-validate", (_req, res) => {
-  return res.status(400).json({ error: "Use /api/upload-sessions/:sessionId/validate" });
-});

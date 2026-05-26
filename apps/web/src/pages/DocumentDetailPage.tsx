@@ -1,4 +1,5 @@
-import { Button, Card, Grid, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { Alert, Button, Card, Grid, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { IconAlertCircle, IconArrowLeft, IconDownload, IconExternalLink, IconFileOff, IconHistory, IconLink } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PdfPreview, PdfThumbnail } from "../components/PdfPreview";
@@ -41,26 +42,34 @@ export function DocumentDetailPage() {
       <Stack gap="lg">
         <Group justify="space-between" align="end">
           <div>
-            {loan ? <Button component={Link} to={`/loans/${loan.id}`} variant="subtle" px={0} mb="sm">Back to {loan.loanNumber}</Button> : null}
+            {loan ? <Button component={Link} to={`/loans/${loan.id}`} variant="subtle" px={0} mb="sm" leftSection={<IconArrowLeft size={16} aria-hidden />}>Back to {loan.loanNumber}</Button> : null}
             <Title order={1}>{document.title}</Title>
             <Text c="dimmed">Versioned document record and review history</Text>
           </div>
           <Group>
             {selectedVersion ? <StatusBadge status={selectedVersion.reviewStatus} /> : null}
-            <Button variant="light" disabled={!selectedVersion} onClick={download}>Download PDF</Button>
+            <Button variant="light" disabled={!selectedVersion} leftSection={<IconDownload size={16} aria-hidden />} onClick={download}>Download PDF</Button>
           </Group>
         </Group>
-        {downloadMessage ? <Text c="red" size="sm">{downloadMessage}</Text> : null}
+        {downloadMessage ? <Alert color="red" variant="light" icon={<IconAlertCircle size={20} aria-hidden />}>{downloadMessage}</Alert> : null}
         <Grid gutter="lg">
           <Grid.Col span={{ base: 12, lg: 8 }}>
             {selectedVersion ? <PdfPreview versionId={selectedVersion.id} title={document.title} /> : (
-              <Card withBorder p="xl"><Text c="dimmed">No document version is available.</Text></Card>
+              <Card withBorder p="xl">
+                <Group gap="xs">
+                  <IconFileOff size={20} color="var(--mantine-color-gray-6)" aria-hidden />
+                  <Text c="dimmed">No document version is available.</Text>
+                </Group>
+              </Card>
             )}
           </Grid.Col>
           <Grid.Col span={{ base: 12, lg: 4 }}>
             <Stack gap="md">
               <Card withBorder radius="lg" p="lg">
-                <Title order={4}>Version history</Title>
+                <Group gap="xs">
+                  <IconHistory size={20} color="var(--mantine-color-indigo-6)" aria-hidden />
+                  <Title order={4}>Version history</Title>
+                </Group>
                 <Stack mt="md">
                   {versions.map((version) => (
                     <Card
@@ -82,14 +91,17 @@ export function DocumentDetailPage() {
                 </Stack>
               </Card>
               <Card withBorder radius="lg" p="lg">
-                <Title order={4}>Linked conditions</Title>
+                <Group gap="xs">
+                  <IconLink size={20} color="var(--mantine-color-indigo-6)" aria-hidden />
+                  <Title order={4}>Linked conditions</Title>
+                </Group>
                 <Stack mt="md">
                   {associatedConditions.map((condition) => (
                     <div key={condition.id}>
                       <Text size="sm" fw={600}>{condition.title}</Text>
                       <Group justify="space-between" mt={4}>
                         <StatusBadge status={condition.status} />
-                        <Button component={Link} to={`/conditions/${condition.id}`} variant="subtle" size="xs">Open</Button>
+                        <Button component={Link} to={`/conditions/${condition.id}`} variant="subtle" size="xs" rightSection={<IconExternalLink size={16} aria-hidden />}>Open</Button>
                       </Group>
                     </div>
                   ))}
@@ -99,7 +111,10 @@ export function DocumentDetailPage() {
           </Grid.Col>
         </Grid>
         <Card withBorder radius="lg" p="lg">
-          <Title order={4} mb="md">Audit history</Title>
+          <Group gap="xs" mb="md">
+            <IconHistory size={20} color="var(--mantine-color-indigo-6)" aria-hidden />
+            <Title order={4}>Audit history</Title>
+          </Group>
           <Stack>
             {auditLog.map((entry) => (
               <Group key={entry.id} justify="space-between">

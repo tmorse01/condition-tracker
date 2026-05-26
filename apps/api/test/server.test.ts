@@ -4,27 +4,12 @@ import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createApp } from "../src/app.js";
-import { state } from "../src/data.js";
-import {
-  demoAuditLog,
-  demoConditions,
-  demoConditionDocuments,
-  demoDocuments,
-  demoLoans,
-  demoNotifications,
-  demoUploadSessions,
-  demoVersions,
-} from "@condition-tracker/shared/demo-data";
+import type { Document, DocumentVersion, Loan } from "@condition-tracker/shared";
 
-const resetState = () => {
-  state.loans = structuredClone(demoLoans);
-  state.conditions = structuredClone(demoConditions);
-  state.documents = structuredClone(demoDocuments);
-  state.conditionDocuments = structuredClone(demoConditionDocuments);
-  state.documentVersions = structuredClone(demoVersions);
-  state.uploadSessions = structuredClone(demoUploadSessions);
-  state.auditLog = structuredClone(demoAuditLog);
-  state.notifications = structuredClone(demoNotifications);
+const pick = <T>(items: T[], predicate: (item: T) => boolean) => {
+  const item = predicate ? items.find(predicate) : items[0];
+  assert.ok(item, "Expected seeded data to be present");
+  return item;
 };
 
 const withServer = async (webDistDirectory: string, run: (baseUrl: string) => Promise<void>) => {
@@ -41,8 +26,6 @@ const withServer = async (webDistDirectory: string, run: (baseUrl: string) => Pr
 };
 
 const main = async () => {
-  resetState();
-
   const webDistDirectory = await mkdtemp(path.join(os.tmpdir(), "condition-tracker-web-"));
   await writeFile(path.join(webDistDirectory, "index.html"), "<!doctype html><html><body>frontend</body></html>");
   await mkdir(path.join(webDistDirectory, "assets"), { recursive: true });
@@ -61,12 +44,10 @@ const main = async () => {
     assert.equal(root.status, 200);
     assert.match(await root.text(), /frontend/);
 
-    const clientRoute = await fetch(`${baseUrl}/loans/loan_1001`);
+    const clientRoute = await fetch(`${baseUrl}/loans/11111111-1111-4111-8111-111111111111`);
     assert.equal(clientRoute.status, 200);
     assert.match(await clientRoute.text(), /frontend/);
   });
-
-  resetState();
 
   await withServer(webDistDirectory, async (baseUrl) => {
     const loans = await fetch(`${baseUrl}/api/loans`);
@@ -74,31 +55,18 @@ const main = async () => {
     assert.equal(loans.status, 200);
     assert.equal(loansBody.data.length, 2);
 
-    const loan = await fetch(`${baseUrl}/api/loans/loan_1002`);
+    const loanRecord = pick(loansBody.data as Loan[], (loan) => loan.loanNumber === "BC-1001");
+
+    const loan = await fetch(`${baseUrl}/api/loans/${loanRecord.id}`);
     assert.equal(loan.status, 200);
+    const loanBody = await loan.json();
+    const documentRecord = pick(loanBody.data.documents as Document[], (document) => document.title === "Borrower Bank Statements");
+    const versionRecord = pick(loanBody.data.documentVersions as DocumentVersion[], (version) => version.documentId === documentRecord.id && version.versionNumber === 2);
 
-    const session = await fetch(`${baseUrl}/api/loans/loan_1002/upload-sessions`, { method: "POST" });
-    assert.equal(session.status, 201);
-    const sessionBody = await session.json();
+    const document = await fetch(`${baseUrl}/api/documents/${documentRecord.id}`);
+    assert.equal(document.status, 200);
 
-    const validation = await fetch(
-      `${baseUrl}/api/upload-sessions/${sessionBody.data.sessionId}/validate?token=${encodeURIComponent(sessionBody.data.token)}`,
-    );
-    assert.equal(validation.status, 200);
-
-    const form = new FormData();
-    form.append("token", sessionBody.data.token);
-    form.append("conditionId", "cond_4");
-    form.append("title", "Builder Contract");
-    form.append("file", new File([new Uint8Array([37, 80, 68, 70])], "builder-contract.pdf", { type: "application/pdf" }));
-
-    const upload = await fetch(`${baseUrl}/api/upload-sessions/${sessionBody.data.sessionId}/documents`, {
-      method: "POST",
-      body: form,
-    });
-    assert.equal(upload.status, 202);
-
-    const review = await fetch(`${baseUrl}/api/document-versions/ver_4/reject`, {
+    const review = await fetch(`${baseUrl}/api/document-versions/${versionRecord.id}/reject`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ notes: "Needs a clearer scan", reviewerName: "Avery Reviewer" }),

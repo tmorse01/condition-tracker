@@ -1,34 +1,29 @@
-import type { AuditLogEntry, Notification } from "@condition-tracker/shared";
-import { state } from "../data.js";
+import { randomUUID } from "node:crypto";
+import type { DbExecutor } from "@condition-tracker/db";
+import { db } from "./db.js";
 
 const now = () => new Date().toISOString();
-const newId = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 
-const pushAudit = (entry: Omit<AuditLogEntry, "id" | "createdAt">) => {
-  state.auditLog.unshift({ id: newId("audit"), createdAt: now(), ...entry });
-};
-
-export const enqueueNotification = (entry: Omit<Notification, "id" | "createdAt" | "attemptCount" | "status" | "sentAt">) => {
-  const notification: Notification = {
-    id: newId("notif"),
-    createdAt: now(),
-    attemptCount: 0,
+export const enqueueNotification = async (entry: { recipient: string; templateKey: string; payloadJson: string }) => {
+  await db.insertInto("Notification").values({
+    id: randomUUID(),
+    recipient: entry.recipient,
+    templateKey: entry.templateKey,
     status: "Pending",
+    payloadJson: entry.payloadJson,
+    attemptCount: 0,
+    createdAt: now(),
     sentAt: null,
-    ...entry,
-  };
-  state.notifications.unshift(notification);
-  return notification;
+  }).execute();
 };
 
-export const processNotificationQueue = () => {
-  const pending = state.notifications.filter((item) => item.status === "Pending");
+export const processNotificationQueue = async () => {
+  const pending = await db.selectFrom("Notification").selectAll().where("status", "=", "Pending").execute();
   for (const notification of pending) {
-    notification.attemptCount += 1;
-    if (notification.attemptCount >= 1) {
-      notification.status = "Sent";
-      notification.sentAt = now();
-      pushAudit({
+    await db.transaction().execute(async (trx: DbExecutor) => {
+      await trx.updateTable("Notification").set({ attemptCount: notification.attemptCount + 1, status: "Sent", sentAt: now() }).where("id", "=", notification.id).execute();
+      await trx.insertInto("AuditLog").values({
+        id: randomUUID(),
         loanId: null,
         conditionId: null,
         documentId: null,
@@ -38,37 +33,40 @@ export const processNotificationQueue = () => {
         action: "NotificationSent",
         message: `Sent ${notification.templateKey} notification to ${notification.recipient}`,
         metadataJson: JSON.stringify({ notificationId: notification.id, templateKey: notification.templateKey }),
-      });
-    }
+        createdAt: now(),
+      }).execute();
+    });
   }
   return { processed: pending.length };
 };
 
-export const expireUploadSessions = () => {
+export const expireUploadSessions = async () => {
+  const active = await db.selectFrom("UploadSession").selectAll().where("status", "=", "Active").execute();
   let expiredCount = 0;
-  for (const session of state.uploadSessions) {
-    if (session.status !== "Active") continue;
+  for (const session of active) {
     if (new Date(session.expiresAt).getTime() > Date.now()) continue;
-    session.status = "Expired";
-    session.revokedAt = now();
     expiredCount += 1;
-    pushAudit({
-      loanId: session.loanId,
-      conditionId: null,
-      documentId: null,
-      documentVersionId: null,
-      actorType: "System",
-      actorName: "Upload Session Expirer",
-      action: "UploadSessionExpired",
-      message: `Expired upload session ${session.id}`,
-      metadataJson: JSON.stringify({ sessionId: session.id }),
+    await db.transaction().execute(async (trx: DbExecutor) => {
+      await trx.updateTable("UploadSession").set({ status: "Expired", revokedAt: now() }).where("id", "=", session.id).execute();
+      await trx.insertInto("AuditLog").values({
+        id: randomUUID(),
+        loanId: session.loanId,
+        conditionId: null,
+        documentId: null,
+        documentVersionId: null,
+        actorType: "System",
+        actorName: "Upload Session Expirer",
+        action: "UploadSessionExpired",
+        message: `Expired upload session ${session.id}`,
+        metadataJson: JSON.stringify({ sessionId: session.id }),
+        createdAt: now(),
+      }).execute();
     });
   }
   return { expiredCount };
 };
 
-export const runBackgroundJobs = () => ({
-  notifications: processNotificationQueue(),
-  uploadSessions: expireUploadSessions(),
+export const runBackgroundJobs = async () => ({
+  notifications: await processNotificationQueue(),
+  uploadSessions: await expireUploadSessions(),
 });
-

@@ -1,4 +1,6 @@
 import { Router, type Router as ExpressRouter } from "express";
+import { asyncHandler } from "../middleware/async-handler.js";
+import { isUuid } from "../middleware/uuid-params.js";
 import {
   getConditionDetail,
   reviewLatestConditionVersion,
@@ -6,17 +8,21 @@ import {
 
 export const conditionsRouter: ExpressRouter = Router();
 
-conditionsRouter.get("/:conditionId", (req, res) => {
-  const detail = getConditionDetail(String(req.params.conditionId));
+conditionsRouter.get("/:conditionId", asyncHandler(async (req, res) => {
+  const conditionId = String(req.params.conditionId);
+  if (!isUuid(conditionId)) return res.status(404).json({ error: "Condition not found" });
+  const detail = await getConditionDetail(conditionId);
   if (!detail) return res.status(404).json({ error: "Condition not found" });
   return res.status(200).json({ data: detail });
-});
+}));
 
 conditionsRouter.patch("/:conditionId", (req, res) => {
-  return res.status(200).json({ data: { id: String(req.params.conditionId), ...req.body } });
+  const conditionId = String(req.params.conditionId);
+  if (!isUuid(conditionId)) return res.status(404).json({ error: "Condition not found" });
+  return res.status(200).json({ data: { id: conditionId, ...req.body } });
 });
 
-conditionsRouter.post("/:conditionId/review", (req, res) => {
+conditionsRouter.post("/:conditionId/review", asyncHandler(async (req, res) => {
   const body = req.body as {
     action?: "Approved" | "Rejected";
     notes?: string;
@@ -25,8 +31,10 @@ conditionsRouter.post("/:conditionId/review", (req, res) => {
   if (!body?.action) {
     return res.status(400).json({ error: "action is required" });
   }
-  const result = reviewLatestConditionVersion(
-    String(req.params.conditionId),
+  const conditionId = String(req.params.conditionId);
+  if (!isUuid(conditionId)) return res.status(404).json({ error: "Condition not found" });
+  const result = await reviewLatestConditionVersion(
+    conditionId,
     body.action,
     body.notes,
     body.reviewerName ?? "Internal User",
@@ -38,4 +46,4 @@ conditionsRouter.post("/:conditionId/review", (req, res) => {
       reviewStatus: body.action,
     },
   });
-});
+}));

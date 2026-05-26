@@ -1,4 +1,5 @@
 import { Badge, Button, Card, Group, Loader, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import { IconArrowRight, IconFilter, IconSearch } from "@tabler/icons-react";
 import { useQueries } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -35,10 +36,11 @@ export function LoansPage() {
             <TextInput
               label="Search"
               placeholder="Loan number, borrower, or address"
+              leftSection={<IconSearch size={16} aria-hidden />}
               value={search}
               onChange={(event) => setSearch(event.currentTarget.value)}
             />
-            <Select label="Status" value={status} onChange={setStatus} data={["All", "Active", "OnHold", "Closed"]} />
+            <Select label="Status" leftSection={<IconFilter size={16} aria-hidden />} value={status} onChange={setStatus} data={["All", "Active", "OnHold", "Closed"]} />
           </Group>
           {isLoading ? <Loader /> : (
             <Table highlightOnHover verticalSpacing="md">
@@ -70,7 +72,7 @@ export function LoansPage() {
                       <Table.Td><Text size="sm">{new Date(loan.updatedAt).toLocaleDateString()}</Text></Table.Td>
                       <Table.Td><StatusBadge status={loan.status} /></Table.Td>
                       <Table.Td>
-                        <Button component={Link} variant="light" to={`/loans/${loan.id}`}>Open</Button>
+                        <Button component={Link} variant="light" to={`/loans/${loan.id}`} rightSection={<IconArrowRight size={16} aria-hidden />}>Open</Button>
                       </Table.Td>
                     </Table.Tr>
                   );
